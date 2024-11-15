@@ -1,20 +1,16 @@
+// scripts/ui/playerMenu.js
 import { ActionFormData, MessageFormData } from '@minecraft/server-ui';
-import { CollectionManager } from '../config/collections';
-import { Logger } from '../utils/logger';
-import { world } from '@minecraft/server';
+import { CollectionManager } from '../config/collections.js';
 import { CollectionHandler } from '../handlers/collectionHandler.js';
+import { Logger } from '../utils/logger.js';
 
 export class PlayerMenu {
     static async showMainMenu(player) {
         try {
-            Logger.log(`Opening player menu for ${player.name}`, "DEBUG", "PLAYER_UI");
-            
-            await CollectionHandler.checkProgress(player);
-q
             const menu = new ActionFormData()
                 .title("§b§lSkychievments")
-                .body("§7View your collection progress\n")
-                .button("Active Collections\n§8View current progress")
+                .body("§7Select a category to view:\n")
+                .button("Active Collections\n§8View available tasks")
                 .button("Completed Collections\n§8View your achievements")
                 .button("Close");
 
@@ -37,36 +33,40 @@ q
 
     static async showActiveCollections(player) {
         try {
-            Logger.log(`Showing active collections for ${player.name}`, "DEBUG", "PLAYER_UI");
-            
-            const collections = CollectionManager.getEnabledCollections();
-            const progress = world.getDynamicProperty(`progress_${player.id}`) || '{}';
-            const playerProgress = JSON.parse(progress);
-            
-            let menuText = "§7Current collection progress:\n\n";
-            
+            // Check progress
+            const progress = await CollectionHandler.checkProgress(player);
+            const collections = CollectionManager.getEnabledCollections()
+                .filter(c => !progress[c.id]?.completed);
+
+            const menu = new ActionFormData()
+                .title("§b§lActive Collections")
+                .body("§7Select a collection to view details:\n");
+
             if (collections.length === 0) {
-                menuText += "§cNo active collections available.";
+                menu.button("§cNo Active Collections\n§8Complete them all!");
             } else {
                 collections.forEach(collection => {
-                    const currentAmount = playerProgress[collection.id]?.amount || 0;
+                    const currentAmount = progress[collection.id]?.amount || 0;
                     const percentage = Math.min(100, Math.floor((currentAmount / collection.amount) * 100));
-                    
-                    menuText += `§l${collection.name}\n`;
-                    menuText += `§7Progress: §f${percentage}% (${currentAmount}/${collection.amount})\n`;
-                    menuText += `§7Reward: §f${collection.rewardText}\n\n`;
+                    menu.button(
+                        `${collection.displayName}\n§8Progress: ${percentage}%`
+                    );
                 });
             }
-
-            const menu = new MessageFormData()
-                .title("§b§lActive Collections")
-                .body(menuText)
-                .button1("Back")
-                .button2("Close");
+            menu.button("Back to Menu\n§8Return to main menu");
 
             const response = await menu.show(player);
             
-            if (!response.canceled && response.selection === 0) {
+            if (response.canceled) return;
+            
+            if (response.selection === collections.length) {
+                await this.showMainMenu(player);
+                return;
+            }
+
+            if (collections.length > 0) {
+                await this.showCollectionDetails(player, collections[response.selection], progress);
+            } else {
                 await this.showMainMenu(player);
             }
         } catch (error) {
@@ -74,39 +74,59 @@ q
         }
     }
 
-    static async showCompletedCollections(player) {
+    static async showCollectionDetails(player, collection, progress) {
         try {
-            Logger.log(`Showing completed collections for ${player.name}`, "DEBUG", "PLAYER_UI");
+            const currentAmount = progress[collection.id]?.amount || 0;
+            const percentage = Math.min(100, Math.floor((currentAmount / collection.amount) * 100));
             
-            const progress = world.getDynamicProperty(`progress_${player.id}`) || '{}';
-            const playerProgress = JSON.parse(progress);
-            
-            let menuText = "§7Your completed collections:\n\n";
-            const completed = Object.entries(playerProgress)
-                .filter(([_, data]) => data.completed)
-                .sort((a, b) => b[1].completedAt - a[1].completedAt);
-            
-            if (completed.length === 0) {
-                menuText += "§cNo collections completed yet.";
-            } else {
-                completed.forEach(([id, data]) => {
-                    const collection = CollectionManager.getCollections().find(c => c.id === id);
-                    if (collection) {
-                        menuText += `§l${collection.name}\n`;
-                        menuText += `§7Completed: §f${new Date(data.completedAt).toLocaleString()}\n\n`;
-                    }
-                });
-            }
-
             const menu = new MessageFormData()
-                .title("§b§lCompleted Collections")
-                .body(menuText)
+                .title(collection.displayName)
+                .body(
+                    `${collection.description}\n\n` +
+                    `§7Progress: §f${currentAmount}/${collection.amount} (${percentage}%)\n` +
+                    `§7Required: §f${collection.amount} ${collection.itemId}\n` +
+                    `§7Reward: §f${collection.rewardText}`
+                )
                 .button1("Back")
                 .button2("Close");
 
             const response = await menu.show(player);
             
             if (!response.canceled && response.selection === 0) {
+                await this.showActiveCollections(player);
+            }
+        } catch (error) {
+            Logger.log(`Error showing collection details: ${error}`, "ERROR", "PLAYER_UI");
+        }
+    }
+
+    static async showCompletedCollections(player) {
+        try {
+            const progress = await CollectionHandler.checkProgress(player);
+            const completed = CollectionManager.getCollections()
+                .filter(c => progress[c.id]?.completed)
+                .sort((a, b) => (progress[b.id].completedAt - progress[a.id].completedAt));
+
+            const menu = new ActionFormData()
+                .title("§b§lCompleted Collections")
+                .body("§7Your completed collections:\n");
+
+            if (completed.length === 0) {
+                menu.button("§cNo Completed Collections\n§8Complete some tasks first!");
+            } else {
+                completed.forEach(collection => {
+                    const completedAt = new Date(progress[collection.id].completedAt)
+                        .toLocaleString();
+                    menu.button(
+                        `${collection.displayName}\n§8Completed`
+                    );
+                });
+            }
+            menu.button("Back to Menu\n§8Return to main menu");
+
+            const response = await menu.show(player);
+            
+            if (!response.canceled && (response.selection === completed.length || completed.length === 0)) {
                 await this.showMainMenu(player);
             }
         } catch (error) {

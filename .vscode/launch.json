@@ -6,7 +6,7 @@
         "request": "attach",
         "name": "Debug with Minecraft",
         "mode": "listen",
-        "preLaunchTask": "build",
+        
         "targetModuleUuid": "a71f1e7b-def2-40c2-aab6-c5c5e1e37e74",
         "localRoot": "${workspaceFolder}/scripts/",
         "port": 19144
