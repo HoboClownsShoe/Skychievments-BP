@@ -1,0 +1,25 @@
+{
+    "format_version": "1.20.0",
+    "minecraft:item": {
+      "description": {
+        "identifier": "skyblock:skychievments_admin",
+        "menu_category": {
+                  "category": "construction",
+                  "group": "itemGroup.name.skychievments"
+              }
+        
+      },
+      "components": {
+        "minecraft:display_name": {
+          "value": "§6§lSkychievments Admin"
+        },
+        "minecraft:icon": {
+          "texture": "skychievments_admin"
+        },
+        "minecraft:max_stack_size": 1,
+        "minecraft:glint": true,
+        "minecraft:hand_equipped": true,
+        "minecraft:allow_off_hand": false
+      }
+    }
+  }
