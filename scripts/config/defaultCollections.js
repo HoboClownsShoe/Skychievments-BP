@@ -1,4 +1,5 @@
 // scripts/config/defaultCollections.js
+//this is changed
 export const DEFAULT_COLLECTIONS = {
     "collections": [
         {
