@@ -3,27 +3,32 @@ export const DEFAULT_COLLECTIONS = {
     "collections": [
         {
             "id": "cobblestone_basic",
+            "parentId": "group_mining",
             "name": "Basic Cobblestone",
-            "displayName": "§6§lCobblestone Collector",
-            "description": "§7Collect cobblestone to earn your first diamond",
+            "displayName": "§7§lStone Age Begins",
+            "description": "§7Your first stepping stone to success!",
             "icon": "minecraft:cobblestone",
             "itemId": "minecraft:cobblestone",
             "amount": 64,
-            "reward": "give @p diamond 1",
-            "rewardText": "1 Diamond",
-            "enabled": true
+            "reward": "give @p stone_pickaxe 1",
+            "rewardText": "Stone Pickaxe",
+            "enabled": true,
+            "order": 0
         },
         {
-            "id": "wood_basic",
-            "name": "Basic Wood",
-            "displayName": "§2§lWoodcutter",
-            "description": "§7Chop down trees for iron rewards",
-            "icon": "minecraft:oak_log",
-            "itemId": "minecraft:oak_log",
-            "amount": 32,
-            "reward": "give @p iron_ingot 4",
-            "rewardText": "4 Iron Ingots",
-            "enabled": true
+            "id": "wheat_starter",
+            "parentId": "group_farming",
+            "name": "Beginning Farmer",
+            "displayName": "§e§lBeginning Farmer",
+            "description": "§7Start your farming journey!",
+            "icon": "minecraft:wheat",
+            "itemId": "minecraft:wheat",
+            "amount": 64,
+            "reward": "give @p bread 16",
+            "rewardText": "16 Bread",
+            "enabled": true,
+            "order": 0
         }
+        // ... other collections
     ]
 };

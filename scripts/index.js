@@ -6,6 +6,7 @@ import { PlayerMenu } from './ui/playerMenu';
 import { CollectionManager } from './config/collections';
 import { Logger } from './utils/logger';
 import { Permissions } from './utils/permissions';
+import { ActionFormData } from "@minecraft/server-ui"
 
 world.afterEvents.worldInitialize.subscribe(() => {
     try {
@@ -25,6 +26,15 @@ world.afterEvents.itemUse.subscribe((event) => {
     try {
         const { source: player, itemStack } = event;
         
+
+        const ui = new ActionFormData()
+        .title("custom_panel")
+        .body("")
+        .button("button1")
+        .button("button2")
+        .button("button3");
+    
+
         switch (itemStack.typeId) {
             case 'skyblock:skychievments_admin':
                 if (Permissions.isAdmin(player)) {
@@ -37,6 +47,10 @@ world.afterEvents.itemUse.subscribe((event) => {
             case 'skyblock:skychievments':
                 PlayerMenu.showMainMenu(player);
                 break;
+
+            case "minecraft:compass": ui.show(player); 
+                break;
+
         }
     } catch (error) {
         Logger.log(`Error handling item use: ${error}`, "ERROR", "MAIN");

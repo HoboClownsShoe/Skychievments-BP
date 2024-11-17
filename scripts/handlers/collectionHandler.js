@@ -48,6 +48,65 @@ export class CollectionHandler {
         }
     }
 
+
+    static async getPlayerProgress(player) {
+        try {
+            const progress = world.getDynamicProperty(`progress_${player.id}`);
+            return progress ? JSON.parse(progress) : {};
+        } catch (error) {
+            Logger.log(`Error getting player progress: ${error}`, "ERROR", "COLLECTIONS");
+            return {};
+        }
+    }
+
+    
+    static async getCollectionProgress(player, collectionId) {
+        try {
+            const progress = world.getDynamicProperty(`progress_${player.id}`);
+            if (!progress) return null;
+            const playerProgress = JSON.parse(progress);
+            return playerProgress[collectionId];
+        } catch (error) {
+            Logger.log(`Error getting collection progress: ${error}`, "ERROR", "COLLECTIONS");
+            return null;
+        }
+    }
+
+    static async checkSingleCollection(player, collection) {
+        try {
+            const container = player.getComponent('inventory').container;
+            const progress = await this.#getPlayerProgress(player);
+            
+            if (progress[collection.id]?.completed) return false;
+
+            let totalCount = 0;
+            for (let i = 0; i < container.size; i++) {
+                const item = container.getItem(i);
+                if (item?.typeId === collection.itemId) {
+                    totalCount += item.amount;
+                }
+            }
+
+            const currentProgress = progress[collection.id] || { amount: 0, completed: false };
+            if (totalCount >= collection.amount && !currentProgress.completed) {
+                await this.#completeCollection(player, collection, progress);
+                return true;
+            } else if (totalCount !== currentProgress.amount) {
+                progress[collection.id] = {
+                    amount: totalCount,
+                    completed: false
+                };
+                await this.#savePlayerProgress(player, progress);
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            Logger.log(`Error checking single collection: ${error}`, "ERROR", "COLLECTIONS");
+            return false;
+        }
+    }
+
     static async #completeCollection(player, collection, progress) {
         try {
             // Mark as completed
@@ -82,6 +141,16 @@ export class CollectionHandler {
             world.setDynamicProperty(`progress_${player.id}`, JSON.stringify(progress));
         } catch (error) {
             Logger.log(`Error saving player progress: ${error}`, "ERROR", "COLLECTIONS");
+        }
+    }
+
+    static async getCollectionProgress(player, collectionId) {
+        try {
+            const progress = await this.getPlayerProgress(player);
+            return progress[collectionId];
+        } catch (error) {
+            Logger.log(`Error getting collection progress: ${error}`, "ERROR", "COLLECTIONS");
+            return null;
         }
     }
 }
