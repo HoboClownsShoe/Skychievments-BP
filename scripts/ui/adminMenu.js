@@ -2,7 +2,7 @@
 import { ActionFormData, ModalFormData, MessageFormData } from '@minecraft/server-ui';
 import { CollectionManager } from '../config/collections.js';
 import { Logger } from '../utils/logger.js';
-import { COLLECTION_GROUPS, getGroupIds } from '../config/collectionGroups.js';
+import { COLLECTION_GROUPS, CollectionGroupManager } from '../config/collectionGroups.js';
 import { CREATIVE_CATEGORIES } from '../config/categorizedItems.js'
 import { CollectionHelper } from '../utils/helpers.js';
 import { world } from '@minecraft/server';
@@ -10,18 +10,23 @@ import { world } from '@minecraft/server';
 export class AdminMenu {
     static async showMainMenu(player) {
         try {
-            Logger.log(`Opening admin main menu for ${player.name}`, "INFO", "ADMIN_UI");
-            
+            // Get overall statistics for display
+            const collections = CollectionManager.getCollections();
+            const enabledCount = collections.filter(c => c.enabled).length;
             const debugStatus = Logger.isDebugEnabled() ? '§aEnabled' : '§cDisabled';
             
             const menu = new ActionFormData()
                 .title("Admin")
-                .body(`§7Manage collections and settings\n\n§7Debug Logging: ${debugStatus}\n`)
-                .button("View Collections")
-                .button("Create Collection")
-                .button("Toggle Debug Logging")
-                .button("Reload Collections")
-                .button("Reset System")
+                .body(
+                    `§7Manage collections and settings\n\n` +
+                    `§7Total Collections: §f${enabledCount}/${collections.length} enabled\n` +
+                    `§7Debug Logging: ${debugStatus}\n`
+                )
+                .button("View Collections\n§8Manage existing collections")
+                .button("Create Collection\n§8Add new collection")
+                .button("Storage Stats\n§8Check storage usage")
+                .button("System Management\n§8Reset and reload options")
+                .button("Toggle Debug\n§8Debug logging")
                 .button("Close");
 
             const response = await menu.show(player);
@@ -30,21 +35,21 @@ export class AdminMenu {
             
             switch (response.selection) {
                 case 0:
-                    await this.showCollectionsList(player);
+                    await this.showGroupSelection(player, "View Collections");
                     break;
                 case 1:
                     await this.showCreateCollection(player);
                     break;
                 case 2:
+                    await this.showStorageStats(player);
+                    break;
+                case 3:
+                    await this.showSystemManagement(player);
+                    break;
+                case 4:
                     const debugEnabled = Logger.toggleDebug();
                     player.sendMessage(`§7Debug logging ${debugEnabled ? '§aenabled' : '§cdisabled'}`);
                     await this.showMainMenu(player);
-                    break;
-                case 3:
-                    await this.reloadCollections(player);
-                    break;
-                case 4:
-                    await this.showResetConfirmation(player);
                     break;
             }
         } catch (error) {
@@ -52,74 +57,137 @@ export class AdminMenu {
         }
     }
 
+    static async showSystemManagement(player) {
+        try {
+            const menu = new ActionFormData()
+                .title("§6§lSystem Management")
+                .body(
+                    "§7Choose a system management option:\n\n" +
+                    "§cFull Reset (Development Only):\n" +
+                    "§7- Clears all collections and progress\n" +
+                    "§7- Reloads hardcoded defaults\n" +
+                    "§7- Resets entire system state\n\n" +
+                    "§6Load New Collections:\n" +
+                    "§7- Adds any new hardcoded collections\n" +
+                    "§7- Preserves existing collections\n" +
+                    "§7- Keeps player progress\n\n" +
+                    "§eWarning: Choose these options carefully!"
+                )
+                .button("§cFull Reset\n§8Development only")
+                .button("§6Load New Collections\n§8Add new defaults")
+                .button("Back\n§8Return to menu");
+
+            const response = await menu.show(player);
+            
+            if (response.canceled) {
+                await this.showMainMenu(player);
+                return;
+            }
+
+            switch (response.selection) {
+                case 0:
+                    await this.showFullResetConfirmation(player);
+                    break;
+                case 1:
+                    await this.showLoadNewConfirmation(player);
+                    break;
+                default:
+                    await this.showMainMenu(player);
+            }
+        } catch (error) {
+            Logger.log(`Error in system management menu: ${error}`, "ERROR", "ADMIN_UI");
+            await this.showMainMenu(player);
+        }
+    }
+    
     static async showCreateCollection(player) {
         try {
             Logger.log(`Starting collection creation process for ${player.name}`, "INFO", "ADMIN_UI");
             
-            // Group selection
+            // Group selection code remains the same until we get the selectedGroup
             const groupMenu = new ActionFormData()
                 .title("§6§lSelect Collection Group")
                 .body("§7Choose which group this collection belongs to:\n");
-
-            COLLECTION_GROUPS.sort((a, b) => a.order - b.order).forEach(group => {
+    
+            const orderedGroups = CollectionGroupManager.getGroupIds()
+                .map(id => CollectionGroupManager.getGroupById(id))
+                .sort((a, b) => a.order - b.order);
+    
+            orderedGroups.forEach(group => {
+                const groupCollections = CollectionManager.getCollectionsByGroup(group.id);
+                
                 groupMenu.button(
-                    `${group.displayName}\n§8${group.description}`,
+                    `${group.displayName}\n` +
+                    `§8${groupCollections.length} collections - ${group.description}`,
                     group.icon
                 );
             });
-
+    
             const groupResponse = await groupMenu.show(player);
             if (groupResponse.canceled) {
                 Logger.log("Collection creation cancelled at group selection", "INFO", "ADMIN_UI");
                 await this.showMainMenu(player);
                 return;
             }
-
-            const selectedGroup = COLLECTION_GROUPS[groupResponse.selection];
-
-            // Collection details
+    
+            const selectedGroup = orderedGroups[groupResponse.selection];
+            Logger.log(`Selected group: ${selectedGroup.id}`, "DEBUG", "ADMIN_UI");
+    
+            // Collection details form
             const detailsForm = new ModalFormData()
-                .title(`Create Collection Details`)
-                .textField("Display Name", "§8Collection Name", "")
-                .textField("Description", "Collection description", "");
-
+                .title("Create Collection Details")
+                .textField(
+                    "§2Display Name§r\n§7The name shown to players",
+                    "§8Example: §2§lStone Age Begins"
+                )
+                .textField(
+                    "§2Description§r\n§7Explain what players need to do",
+                    "§8Example: Begin your journey by gathering basic materials!"
+                );
+    
             const detailsResponse = await detailsForm.show(player);
-            if (detailsResponse.canceled) return;
-
+            if (detailsResponse.canceled) {
+                await this.showMainMenu(player);
+                return;
+            }
+    
             const [displayName, description] = detailsResponse.formValues;
             
             if (!displayName || !description) {
                 player.sendMessage('§cDisplay name and description are required!');
-                return;
-            }
-
-            // Collect requirements
-            const requirements = await this.collectRequirements(player);
-            if (requirements === null) {
-                Logger.log("Collection creation cancelled during requirements", "INFO", "ADMIN_UI");
                 await this.showMainMenu(player);
                 return;
             }
-
-            if (requirements.length === 0) {
+    
+            // Collect requirements
+            const requirements = await this.collectRequirements(player);
+            if (requirements === null || requirements.length === 0) {
                 player.sendMessage('§cAt least one requirement is needed!');
                 Logger.log("Collection creation cancelled - no requirements added", "INFO", "ADMIN_UI");
                 await this.showMainMenu(player);
                 return;
             }
-
+    
             // Collect rewards
             const rewards = await this.collectRewards(player);
             if (!rewards || rewards.length === 0) {
                 player.sendMessage('§cAt least one reward is needed!');
+                await this.showMainMenu(player);
                 return;
             }
-
-            // Generate collection ID from first requirement
+    
+            // Generate collection ID - now including the group ID
             const baseId = requirements[0].itemId.split(':')[1];
-            const id = await CollectionHelper.generateId(baseId);
-
-            // Create collection
+            const id = await CollectionHelper.generateId(baseId, selectedGroup.id);
+            
+            if (!id) {
+                player.sendMessage('§cFailed to generate collection ID!');
+                Logger.log("Failed to generate collection ID", "ERROR", "ADMIN_UI");
+                await this.showMainMenu(player);
+                return;
+            }
+    
+            // Create and validate the collection object
             const collection = {
                 id,
                 parentId: selectedGroup.id,
@@ -129,96 +197,42 @@ export class AdminMenu {
                 requirements,
                 rewards,
                 enabled: true,
-                order: CollectionManager.getCollections()
-                    .filter(c => c.parentId === selectedGroup.id)
-                    .length
+                order: CollectionManager.getCollectionsByGroup(selectedGroup.id).length
             };
-
-            if (await CollectionManager.addCollection(collection)) {
-                player.sendMessage(`§a§lCollection Created!\n§r§7Group: ${selectedGroup.name}\n§7ID: ${collection.id}`);
-                Logger.log(`Collection created successfully: ${collection.id}`, "INFO", "ADMIN_UI");
-            } else {
+    
+            // Log the collection data before adding
+            Logger.log(`Attempting to add collection: ${JSON.stringify(collection)}`, "DEBUG", "ADMIN_UI");
+    
+            // Add the collection with proper error handling
+            try {
+                const added = await CollectionManager.addCollection(collection);
+                if (added) {
+                    player.sendMessage(
+                        `§a§lCollection Created!\n` +
+                        `§r§7Group: ${selectedGroup.name}\n` +
+                        `§7ID: ${collection.id}`
+                    );
+                    Logger.log(`Collection created successfully: ${collection.id}`, "INFO", "ADMIN_UI");
+                } else {
+                    throw new Error("Collection manager returned false");
+                }
+            } catch (addError) {
                 player.sendMessage('§c§lFailed to create collection!');
-                Logger.log(`Failed to create collection with data: ${JSON.stringify(collection)}`, "ERROR", "ADMIN_UI");
+                Logger.log(`Failed to create collection: ${addError}`, "ERROR", "ADMIN_UI");
             }
-
+    
             await this.showMainMenu(player);
-
+    
         } catch (error) {
             Logger.log(`Error creating collection: ${error}`, "ERROR", "ADMIN_UI");
             player.sendMessage('§cAn error occurred while creating the collection.');
-        }
-    }
-
-    static async showResetConfirmation(player) {
-        try {
-            Logger.log(`Showing reset confirmation to ${player.name}`, "DEBUG", "ADMIN_UI");
-            
-            const form = new MessageFormData()
-                .title("§c§lReset System")
-                .body(
-                    "§cWARNING: This will clear ALL data including:\n\n" +
-                    "§7- All collections\n" +
-                    "§7- All rewards\n" +
-                    "§7- All player progress\n" +
-                    "§7- All counters and settings\n\n" +
-                    "§cThis action cannot be undone!\n" +
-                    "§cAre you sure you want to continue?"
-                )
-                .button1("§cReset Everything")
-                .button2("Cancel");
-
-            const response = await form.show(player);
-            
-            if (!response.canceled && response.selection === 0) {
-                await this.resetSystem(player);
-            } else {
-                await this.showMainMenu(player);
-            }
-        } catch (error) {
-            Logger.log(`Error showing reset confirmation: ${error}`, "ERROR", "ADMIN_UI");
-        }
-    }
-
-    static async resetSystem(player) {
-        try {
-            Logger.log("Starting system reset", "INFO", "ADMIN_UI");
-
-            // Get all dynamic properties
-            const properties = [];
-            for (const prop of world.getDynamicPropertyIds()) {
-                if (prop.startsWith('sk_') || prop.startsWith('progress_')) {
-                    properties.push(prop);
-                }
-            }
-
-            // Clear each property
-            for (const prop of properties) {
-                world.setDynamicProperty(prop, undefined);
-                Logger.log(`Cleared property: ${prop}`, "DEBUG", "ADMIN_UI");
-            }
-
-            // Reset collection ID counter
-            await CollectionHelper.resetIdCounter();
-
-            // Reload collections and rewards from defaults
-            await CollectionManager.loadCollections();
-
-
-            player.sendMessage('§aSystem reset successful! All data has been cleared.');
-            Logger.log("System reset completed", "INFO", "ADMIN_UI");
-
-            await this.showMainMenu(player);
-        } catch (error) {
-            Logger.log(`Error during system reset: ${error}`, "ERROR", "ADMIN_UI");
-            player.sendMessage('§cAn error occurred during system reset.');
             await this.showMainMenu(player);
         }
     }
 
     static async showCollectionsList(player) {
         try {
-            Logger.log(`Showing collections list to ${player.name}`, "INFO", "ADMIN_UI");
+            Logger.log(`Showing collections list to ${player.name}`, "DEBUG", "ADMIN_UI");
             
             const collections = CollectionManager.getCollections();
             
@@ -255,7 +269,7 @@ export class AdminMenu {
 
     static async reloadCollections(player) {
         try {
-            Logger.log("Starting collections reload", "INFO", "ADMIN_UI");
+            Logger.log("Starting collections reload", "DEBUG", "ADMIN_UI");
             
             // Get confirmation from user
             const confirmForm = new MessageFormData()
@@ -276,21 +290,21 @@ export class AdminMenu {
                 // Clear collection storage
                 world.setDynamicProperty('sk_collections', undefined);
                 
-                Logger.log("Cleared collection storage", "INFO", "ADMIN_UI");
+                Logger.log("Cleared collection storage", "DEBUG", "ADMIN_UI");
                 
                 // Reload from defaults
                 const collectionsSuccess = await CollectionManager.loadCollections();
                 
                 if (collectionsSuccess) {
                     player.sendMessage('§aCollections reloaded successfully!');
-                    Logger.log("Reload completed successfully", "INFO", "ADMIN_UI");
+                    Logger.log("Reload completed successfully", "DEBUG", "ADMIN_UI");
                 } else {
                     player.sendMessage('§cFailed to reload collections!');
                     Logger.log("Reload failed", "ERROR", "ADMIN_UI");
                 }
             } else {
                 player.sendMessage('§7Reload cancelled');
-                Logger.log("Reload cancelled by user", "INFO", "ADMIN_UI");
+                Logger.log("Reload cancelled by user", "DEBUG", "ADMIN_UI");
             }
             
             await this.showMainMenu(player);
@@ -445,7 +459,7 @@ export class AdminMenu {
                 const response = await menu.show(player);
                 
                 if (response.canceled || response.selection === 2) {
-                    Logger.log("Requirements collection cancelled", "INFO", "ADMIN_UI");
+                    Logger.log("Requirements collection cancelled", "DEBUG", "ADMIN_UI");
                     return null;
                 }
                 
@@ -571,4 +585,213 @@ export class AdminMenu {
             return [];
         }
     }
+
+    static async showStorageStats(player) {
+        try {
+            Logger.log(`Showing storage stats to ${player.name}`, "DEBUG", "ADMIN_UI");
+            
+            // Get all stats first
+            const stats = await CollectionManager.getStorageStats();
+            if (!stats) {
+                player.sendMessage('§cFailed to get storage statistics');
+                return;
+            }
+    
+            // Create menu for group selection
+            const menu = new ActionFormData()
+                .title("§2§lStorage Statistics")
+                .body(CollectionManager.formatStorageStats(stats))
+                .button("Back to Menu\n§8Return to admin menu");
+    
+            const response = await menu.show(player);
+            
+            if (!response.canceled) {
+                await this.showMainMenu(player);
+            }
+        } catch (error) {
+            Logger.log(`Error showing storage stats: ${error}`, "ERROR", "ADMIN_UI");
+            player.sendMessage('§cAn error occurred while showing storage statistics');
+        }
+    }
+
+    static async showGroupSelection(player, action) {
+        try {
+            const menu = new ActionFormData()
+                .title(`§6§l${action}`)
+                .body("§7Select a collection group:");
+
+            // Get groups in proper order
+            const orderedGroups = CollectionGroupManager.getGroupIds()
+                .map(id => CollectionGroupManager.getGroupById(id));
+
+            // Add group buttons with statistics
+            for (const group of orderedGroups) {
+                const collections = CollectionManager.getCollectionsByGroup(group.id);
+                const enabled = collections.filter(c => c.enabled).length;
+                const stats = await CollectionManager.getStorageStats(group.id);
+                const spaceUsed = stats?.[group.id]?.spaceUsedPercent || 0;
+
+                menu.button(
+                    `${group.displayName}\n` +
+                    `§8${enabled}/${collections.length} enabled - ${spaceUsed}% space used`,
+                    group.icon
+                );
+            }
+
+            menu.button("Back to Menu\n§8Return to admin menu");
+
+            const response = await menu.show(player);
+            
+            if (response.canceled || response.selection === orderedGroups.length) {
+                await this.showMainMenu(player);
+                return;
+            }
+
+            const selectedGroup = orderedGroups[response.selection];
+            
+            if (action === "View Collections") {
+                await this.showGroupCollections(player, selectedGroup);
+            } else {
+                // Handle other group-based actions here
+                await this.showMainMenu(player);
+            }
+
+        } catch (error) {
+            Logger.log(`Error in group selection: ${error}`, "ERROR", "ADMIN_UI");
+        }
+    }
+
+    static async showGroupCollections(player, group) {
+        try {
+            const collections = CollectionManager.getCollectionsByGroup(group.id);
+            const stats = await CollectionManager.getStorageStats(group.id);
+            
+            const menu = new ActionFormData()
+                .title(group.displayName)
+                .body(
+                    `§7Manage collections in ${group.displayName}\n\n` +
+                    `§7Total Collections: §f${collections.length}\n` +
+                    `§7Space Used: §f${stats[group.id].spaceUsedPercent}%\n\n` +
+                    `§8Click a collection to view details`
+                );
+
+            // Sort collections by order
+            collections.sort((a, b) => a.order - b.order);
+
+            // Add collection buttons
+            collections.forEach(collection => {
+                const reqText = collection.requirements
+                    .map(r => `${r.amount}x ${r.itemId.split(':')[1]}`)
+                    .join(', ');
+                
+                menu.button(
+                    `${collection.displayName}\n` +
+                    `§8${collection.enabled ? '§aEnabled' : '§cDisabled'} - ${reqText}`
+                );
+            });
+            
+            menu.button("Back to Groups\n§8Return to group selection");
+
+            const response = await menu.show(player);
+            
+            if (response.canceled || response.selection === collections.length) {
+                await this.showGroupSelection(player, "View Collections");
+                return;
+            }
+
+            await this.showCollectionDetails(player, collections[response.selection]);
+
+        } catch (error) {
+            Logger.log(`Error showing group collections: ${error}`, "ERROR", "ADMIN_UI");
+        }
+    }
+
+    static async showFullResetConfirmation(player) {
+        try {
+            const form = new MessageFormData()
+                .title("§c§lFull System Reset")
+                .body(
+                    "§cWARNING: This will:\n\n" +
+                    "§7- Delete ALL collections\n" +
+                    "§7- Clear ALL player progress\n" +
+                    "§7- Reset to hardcoded defaults\n\n" +
+                    "§c§lThis is for development only!\n" +
+                    "§c§lThis cannot be undone!\n" +
+                    "§cAre you absolutely sure?"
+                )
+                .button1("§c§lReset Everything")
+                .button2("§aCancel");
+
+            const response = await form.show(player);
+            
+            if (!response.canceled && response.selection === 0) {
+                Logger.log("Starting full system reset", "INFO", "ADMIN_UI");
+
+                // Clear all player progress
+                const progressProperties = world.getDynamicPropertyIds()
+                    .filter(prop => prop.startsWith('progress_'));
+                
+                for (const prop of progressProperties) {
+                    world.setDynamicProperty(prop, undefined);
+                    Logger.log(`Cleared progress: ${prop}`, "DEBUG", "ADMIN_UI");
+                }
+
+                // Reset collections to defaults
+                const success = await CollectionManager.resetToDefaults();
+
+                if (success) {
+                    player.sendMessage('§a§lSystem reset complete!\n§r§7All data has been reset to defaults.');
+                    Logger.log("System reset completed successfully", "INFO", "ADMIN_UI");
+                } else {
+                    player.sendMessage('§c§lError during reset!\n§r§7Check logs for details.');
+                    Logger.log("System reset failed", "ERROR", "ADMIN_UI");
+                }
+            }
+
+            await this.showSystemManagement(player);
+        } catch (error) {
+            Logger.log(`Error during full reset: ${error}`, "ERROR", "ADMIN_UI");
+            player.sendMessage('§cAn error occurred during system reset.');
+            await this.showSystemManagement(player);
+        }
+    }
+
+    static async showLoadNewConfirmation(player) {
+        try {
+            const form = new MessageFormData()
+                .title("§6§lLoad New Collections")
+                .body(
+                    "This will:\n" +
+                    "§7- Check for new hardcoded collections\n" +
+                    "§7- Add any new collections found\n" +
+                    "§7- Preserve existing collections and progress\n\n" +
+                    "Would you like to continue?"
+                )
+                .button1("§aLoad New Collections")
+                .button2("Cancel");
+
+            const response = await form.show(player);
+            
+            if (!response.canceled && response.selection === 0) {
+                Logger.log("Starting load of new collections", "INFO", "ADMIN_UI");
+
+                const addedCount = await CollectionManager.loadNewDefaultCollections();
+                
+                if (addedCount > 0) {
+                    player.sendMessage(`§a§lSuccess!\n§r§7Added ${addedCount} new collections from defaults.`);
+                    Logger.log(`Added ${addedCount} new collections`, "INFO", "ADMIN_UI");
+                } else {
+                    player.sendMessage("§6No new collections found to add.");
+                    Logger.log("No new collections found", "INFO", "ADMIN_UI");
+                }
+            }
+
+            await this.showSystemManagement(player);
+        } catch (error) {
+            Logger.log(`Error loading new collections: ${error}`, "ERROR", "ADMIN_UI");
+            player.sendMessage('§cError loading new collections.');
+            await this.showSystemManagement(player);
+        }
+    }
+
 }

@@ -1,120 +1,40 @@
 // scripts/handlers/collectionHandler.js
 import { world } from '@minecraft/server';
 import { CollectionManager } from '../config/collections.js';
+import { CollectionGroupManager } from '../config/collectionGroups.js';
 import { Logger } from '../utils/logger.js';
 
 // In collectionHandler.js
 
 export class CollectionHandler {
-static async checkGroupProgress(player, groupId) {
-    try {
-        Logger.log(`Checking ${player.name}'s progress for group ${groupId}`, "INFO", "COLLECTIONS");
-        
-        const container = player.getComponent('inventory').container;
-        const collections = CollectionManager.getEnabledCollections()
-            .filter(c => c.parentId === groupId);
 
-        // Get or initialize player progress
-        let progress = await this.getPlayerProgress(player);
-        if (!progress) {
-            progress = {};
-        }
-
-        let claimableCollections = [];
-
-        // Single inventory scan for all collections in group
-        const inventoryCounts = {};
-        for (let i = 0; i < container.size; i++) {
-            const item = container.getItem(i);
-            if (item) {
-                inventoryCounts[item.typeId] = (inventoryCounts[item.typeId] || 0) + item.amount;
-                Logger.log(`Found ${item.amount}x ${item.typeId} in inventory`, "DEBUG", "COLLECTIONS");
-            }
-        }
-
-        // Check each collection against counted inventory
-        for (const collection of collections) {
-            // Check if collection has valid requirements
-            if (!collection.requirements || !Array.isArray(collection.requirements)) {
-                Logger.log(`Invalid requirements for collection ${collection.id}`, "ERROR", "COLLECTIONS");
-                continue;
-            }
-
-            // Initialize progress for this collection if it doesn't exist
-            if (!progress[collection.id]) {
-                progress[collection.id] = {
-                    requirements: collection.requirements.map(req => ({
-                        itemId: req.itemId,
-                        amount: 0,
-                        completed: false
-                    })),
-                    completed: false
-                };
-            }
-
-            if (progress[collection.id].completed) continue;
-
-            let allRequirementsMet = true;
-            let updatedAmounts = false;
-
-            // Check each requirement
-            for (let i = 0; i < collection.requirements.length; i++) {
-                const requirement = collection.requirements[i];
-                const currentCount = inventoryCounts[requirement.itemId] || 0;
-
-                // Ensure progress requirements array exists and has this index
-                if (!progress[collection.id].requirements[i]) {
-                    progress[collection.id].requirements[i] = {
-                        itemId: requirement.itemId,
-                        amount: 0,
-                        completed: false
-                    };
-                }
-
-                const progressAmount = progress[collection.id].requirements[i].amount;
-
-                // Update progress if amount changed
-                if (progressAmount !== currentCount) {
-                    progress[collection.id].requirements[i].amount = currentCount;
-                    updatedAmounts = true;
-                }
-
-                if (currentCount < requirement.amount) {
-                    allRequirementsMet = false;
-                }
-            }
-
-            if (allRequirementsMet) {
-                claimableCollections.push({
-                    collection,
-                    currentAmounts: progress[collection.id].requirements
-                });
-            }
-
-            if (updatedAmounts) {
-                await this.savePlayerProgress(player, progress);
-            }
-        }
-
-        return {
-            claimableCollections,
-            progress
-        };
-
-    } catch (error) {
-        Logger.log(`Error checking group progress: ${error}`, "ERROR", "COLLECTIONS");
-        return { claimableCollections: [], progress: {} };
-    }
-}
-
-    static async claimCollection(player, collection) {
+    static async checkGroupProgress(player, groupId) {
         try {
-            Logger.log(`Claiming collection ${collection.displayName} for player ${player.name}`, "INFO", "COLLECTIONS");
+            if (!CollectionGroupManager.isValidGroupId(groupId)) {
+                Logger.log(`Invalid group ID ${groupId} for progress check`, "ERROR", "COLLECTIONS");
+                return { claimableCollections: [], progress: {} };
+            }
 
-            // Check all requirements are met
+            Logger.log(`Checking ${player.name}'s progress for group ${groupId}`, "DEBUG", "COLLECTIONS");
+            
+            // Get all collections for this group
+            const collections = CollectionManager.getEnabledCollections()
+                .filter(c => c.parentId === groupId);
+
+            if (collections.length === 0) {
+                Logger.log(`No collections found for group ${groupId}`, "DEBUG", "COLLECTIONS");
+                return { claimableCollections: [], progress: {} };
+            }
+
+            // Get player progress
+            let progress = await this.getPlayerProgress(player);
+            if (!progress) {
+                progress = {};
+            }
+
+            // Single inventory scan for the entire group
             const container = player.getComponent('inventory').container;
             const inventoryCounts = {};
-            
             for (let i = 0; i < container.size; i++) {
                 const item = container.getItem(i);
                 if (item) {
@@ -122,54 +42,124 @@ static async checkGroupProgress(player, groupId) {
                 }
             }
 
-            // Verify all requirements
-            for (const requirement of collection.requirements) {
-                const currentCount = inventoryCounts[requirement.itemId] || 0;
-                if (currentCount < requirement.amount) {
-                    return {
-                        success: false,
-                        message: `§cNot enough ${requirement.itemId.split(':')[1].replace(/_/g, ' ')}! (${currentCount}/${requirement.amount})`
-                    };
+            const claimableCollections = [];
+
+            // Compare inventory against each collection's requirements
+            for (const collection of collections) {
+                try {
+                    // Skip if already completed
+                    if (progress[collection.id]?.completed) continue;
+
+                    // Initialize collection progress if needed
+                    if (!progress[collection.id]) {
+                        progress[collection.id] = {
+                            requirements: collection.requirements.map(req => ({
+                                itemId: req.itemId,
+                                amount: 0,
+                                completed: false
+                            })),
+                            completed: false
+                        };
+                    }
+
+                    let allRequirementsMet = true;
+                    let updatedAmounts = false;
+
+                    // Update progress and check if all requirements are met
+                    for (let i = 0; i < collection.requirements.length; i++) {
+                        const requirement = collection.requirements[i];
+                        const currentCount = inventoryCounts[requirement.itemId] || 0;
+
+                        // Update progress if amount changed
+                        if (progress[collection.id].requirements[i].amount !== currentCount) {
+                            progress[collection.id].requirements[i].amount = currentCount;
+                            updatedAmounts = true;
+                        }
+
+                        if (currentCount < requirement.amount) {
+                            allRequirementsMet = false;
+                        }
+                    }
+
+                    // If all requirements are met, add to claimable collections
+                    if (allRequirementsMet) {
+                        claimableCollections.push({
+                            collection,
+                            requirements: progress[collection.id].requirements
+                        });
+                    }
+
+                    // Save updated progress if needed
+                    if (updatedAmounts) {
+                        await this.savePlayerProgress(player, progress);
+                    }
+
+                } catch (collectionError) {
+                    Logger.log(`Error processing collection ${collection.id}: ${collectionError}`, "ERROR", "COLLECTIONS");
+                    continue;
                 }
             }
 
-            // Update progress
+            return {
+                claimableCollections,
+                progress,
+                groupStats: await this.#getGroupProgressStats(groupId, progress)
+            };
+
+        } catch (error) {
+            Logger.log(`Error checking group progress: ${error}`, "ERROR", "COLLECTIONS");
+            return { claimableCollections: [], progress: {} };
+        }
+    }
+
+    static async claimCollection(player, claimableCollection) {
+        try {
+            const { collection, requirements } = claimableCollection;
+
+            // Grant rewards
+            const grantedRewards = [];
+            const failedRewards = [];
+
+            for (const reward of collection.rewards) {
+                try {
+                    if (reward.type === 'command') {
+                        await player.runCommandAsync(reward.command);
+                        grantedRewards.push(reward.displayText);
+                    } else if (reward.type === 'item') {
+                        await player.runCommandAsync(`give @p ${reward.itemId} ${reward.amount}`);
+                        grantedRewards.push(reward.displayText);
+                    }
+                    Logger.log(`Granted reward: ${reward.displayText}`, "DEBUG", "COLLECTIONS");
+                } catch (rewardError) {
+                    Logger.log(`Failed to grant reward: ${rewardError}`, "ERROR", "COLLECTIONS");
+                    failedRewards.push(reward.displayText);
+                }
+            }
+
+            // Update progress to mark collection as completed
             const progress = await this.getPlayerProgress(player);
             progress[collection.id] = {
-                requirements: collection.requirements.map(req => ({
-                    itemId: req.itemId,
-                    amount: req.amount,
-                    completed: true
-                })),
+                requirements,
                 completed: true,
                 completedAt: Date.now()
             };
             
             await this.savePlayerProgress(player, progress);
 
-            // Grant rewards
-            for (const reward of collection.rewards) {
-                try {
-                    if (reward.type === 'command') {
-                        await player.runCommandAsync(reward.command);
-                    } else if (reward.type === 'item') {
-                        await player.runCommandAsync(`give @p ${reward.itemId} ${reward.amount}`);
-                    }
-                    Logger.log(`Granted reward: ${reward.displayText}`, "DEBUG", "COLLECTIONS");
-                } catch (rewardError) {
-                    Logger.log(`Failed to grant reward: ${rewardError}`, "ERROR", "COLLECTIONS");
-                }
+            // Format reward message
+            let message = `§a§lCollection Complete! §r§a${collection.displayName}\n`;
+            if (grantedRewards.length > 0) {
+                message += `§7Rewards granted:\n§7- ${grantedRewards.join('\n§7- ')}\n`;
+            }
+            if (failedRewards.length > 0) {
+                message += `\n§cFailed to grant:\n§c- ${failedRewards.join('\n§c- ')}`;
             }
 
-            // Format reward message
-            const rewardMessage = collection.rewards
-                .map(r => r.displayText)
-                .join('\n§7- ');
-
             return {
-                success: true,
-                message: `§a§lCollection Complete! §r§a${collection.displayName}\n§7Rewards:\n§7- ${rewardMessage}`
+                success: failedRewards.length === 0,
+                message
             };
+
         } catch (error) {
             Logger.log(`Error claiming collection: ${error}`, "ERROR", "COLLECTIONS");
             return {
@@ -228,4 +218,22 @@ static async checkGroupProgress(player, groupId) {
             return [];
         }
     }
+
+        // New helper method to calculate group progress statistics
+        static async #getGroupProgressStats(groupId, progress) {
+            const group = CollectionGroupManager.getGroupById(groupId);
+            const groupCollections = CollectionManager.getCollectionsByGroup(groupId);
+            
+            const completedCount = groupCollections.filter(c => progress[c.id]?.completed).length;
+            const totalCount = groupCollections.length;
+            const completionPercentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+    
+            return {
+                groupName: group.displayName,
+                totalCollections: totalCount,
+                completedCollections: completedCount,
+                completionPercentage: completionPercentage.toFixed(1),
+                remainingCollections: totalCount - completedCount
+            };
+        }
 }

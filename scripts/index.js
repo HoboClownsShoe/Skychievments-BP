@@ -6,23 +6,60 @@ import { PlayerMenu } from './ui/playerMenu';
 import { CollectionManager } from './config/collections';
 import { Logger } from './utils/logger';
 import { Permissions } from './utils/permissions';
-import { ActionFormData, MessageFormData } from "@minecraft/server-ui"
+import { CollectionGroupManager } from './config/collectionGroups';
+import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
 
-world.afterEvents.worldInitialize.subscribe(() => {
+world.afterEvents.worldInitialize.subscribe(async () => {
     try {
-        // Initialize logger first
+        Logger.log("Initializing Skychievments system...", "INFO", "MAIN");
+
+        // Initialize logger first for proper debugging
         Logger.initialize();
 
         // Create admin_level objective if it doesn't exist
         if (!world.scoreboard.getObjective('admin_level')) {
             world.scoreboard.addObjective('admin_level', 'Admin Level');
+            Logger.log("Created admin_level scoreboard objective", "INFO", "MAIN");
         }
-        CollectionManager.loadCollections();
-        
 
+        // Load collections for each group
+        let loadSuccess = true;
+        for (const groupId of CollectionGroupManager.getGroupIds()) {
+            const group = CollectionGroupManager.getGroupById(groupId);
+            const groupSuccess = await CollectionManager.loadCollections(group.id);
+            
+            if (!groupSuccess) {
+                loadSuccess = false;
+                Logger.log(`Failed to load collections for group: ${group.displayName}`, "ERROR", "MAIN");
+            }
+        }
+
+        if (loadSuccess) {
+            Logger.log("All collection groups loaded successfully", "INFO", "MAIN");
+        } else {
+            Logger.log("Some collection groups failed to load", "ERROR", "MAIN");
+        }
+
+        // Display initialization status to online admins
+        for (const player of world.getAllPlayers()) {
+            if (Permissions.isAdmin(player)) {
+                player.sendMessage(
+                    loadSuccess ? 
+                    "§a§lSkychievments initialized successfully!" :
+                    "§c§lWarning: Some Skychievments collections failed to load. Check logs for details."
+                );
+            }
+        }
 
     } catch (error) {
-        Logger.log(`Error in initialization: ${error}`, "ERROR", "MAIN");
+        Logger.log(`Critical error in initialization: ${error}`, "ERROR", "MAIN");
+        
+        // Notify admins of critical initialization failure
+        for (const player of world.getAllPlayers()) {
+            if (Permissions.isAdmin(player)) {
+                player.sendMessage("§c§lCritical error initializing Skychievments system. Check logs for details.");
+            }
+        }
     }
 });
 
