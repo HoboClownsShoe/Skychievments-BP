@@ -6,15 +6,19 @@ import { PlayerMenu } from './ui/playerMenu';
 import { CollectionManager } from './config/collections';
 import { Logger } from './utils/logger';
 import { Permissions } from './utils/permissions';
-import { ActionFormData } from "@minecraft/server-ui"
+import { ActionFormData, MessageFormData } from "@minecraft/server-ui"
 
 world.afterEvents.worldInitialize.subscribe(() => {
     try {
+        // Initialize logger first
+        Logger.initialize();
+
         // Create admin_level objective if it doesn't exist
         if (!world.scoreboard.getObjective('admin_level')) {
             world.scoreboard.addObjective('admin_level', 'Admin Level');
         }
         CollectionManager.loadCollections();
+        
 
 
     } catch (error) {
@@ -28,12 +32,18 @@ world.afterEvents.itemUse.subscribe((event) => {
         
 
         const ui = new ActionFormData()
-        .title("custom_panel")
+        .title("Default")
         .body("")
         .button("button1")
         .button("button2")
-        .button("button3");
-    
+        .button("button3", "textures/ui/mining_icon.png");
+
+        const mfd = new MessageFormData()
+        .title("MessageFormData")
+        .body("erm......")
+        .button1("Confirm")
+        .button2("Cancel")
+
 
         switch (itemStack.typeId) {
             case 'skyblock:skychievments_admin':
@@ -48,7 +58,7 @@ world.afterEvents.itemUse.subscribe((event) => {
                 PlayerMenu.showMainMenu(player);
                 break;
 
-            case "minecraft:compass": ui.show(player); 
+            case "minecraft:compass": mfd.show(player); 
                 break;
 
         }

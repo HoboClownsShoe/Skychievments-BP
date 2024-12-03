@@ -1,9 +1,7 @@
-
-
-
-// scripts/utils/collectionHelper.js
 import { world } from '@minecraft/server';
 import { Logger } from './logger.js';
+
+// In helpers.js
 
 export class CollectionHelper {
     static #ID_STORAGE_KEY = 'sk_collection_id_counter';
@@ -22,9 +20,9 @@ export class CollectionHelper {
             // Format base name for ID
             const formattedBase = baseName
                 .toLowerCase()
-                .replace(/[^a-z0-9]/g, '_') // Replace non-alphanumeric chars with underscore
-                .replace(/_+/g, '_')        // Replace multiple underscores with single
-                .replace(/^_|_$/g, '');     // Remove leading/trailing underscores
+                .replace(/[^a-z0-9]/g, '_')
+                .replace(/_+/g, '_')
+                .replace(/^_|_$/g, '');
             
             // Generate ID with counter
             const newId = `${formattedBase}_${counter}`;
@@ -53,5 +51,37 @@ export class CollectionHelper {
         return world.getDynamicProperty(this.#ID_STORAGE_KEY) || 0;
     }
 
-    
+    // New helper methods for collection validation
+    static validateRequirements(requirements) {
+        if (!Array.isArray(requirements) || requirements.length === 0) return false;
+        return requirements.every(req => 
+            req.itemId && 
+            typeof req.itemId === 'string' && 
+            req.amount && 
+            Number.isInteger(req.amount) && 
+            req.amount > 0
+        );
+    }
+
+    static validateRewards(rewards) {
+        if (!Array.isArray(rewards) || rewards.length === 0) return false;
+        return rewards.every(reward => {
+            if (!reward.type || !reward.displayText) return false;
+            if (reward.type === 'item') {
+                return reward.itemId && reward.amount && Number.isInteger(reward.amount) && reward.amount > 0;
+            }
+            if (reward.type === 'command') {
+                return reward.command && typeof reward.command === 'string';
+            }
+            return false;
+        });
+    }
+
+    static formatItemName(itemId) {
+        return itemId.split(':')[1].replace(/_/g, ' ');
+    }
+
+    static generateDisplayText(item, amount) {
+        return `${amount}x ${this.formatItemName(item)}`;
+    }
 }
