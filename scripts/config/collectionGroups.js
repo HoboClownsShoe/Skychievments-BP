@@ -1,10 +1,15 @@
 // scripts/config/collectionGroups.js
+import { Logger } from '../utils/logger.js';
+import { world } from '@minecraft/server';
+import { CollectionHandler } from '../handlers/collectionHandler.js';
+import { CollectionManager } from '../config/collections.js';
 
 // Default display settings for groups
 const DEFAULT_GROUP_SETTINGS = {
     iconSize: 32,
     defaultOrder: 999,
-    maxCollectionsPerGroup: 150  // Practical limit based on dynamic property size
+    maxCollectionsPerGroup: 150,  // Practical limit based on dynamic property size
+    enabled : true
 };
 
 // Define the collection groups with their properties
@@ -12,10 +17,11 @@ export const COLLECTION_GROUPS = [
     {
         id: "group_tools",
         name: "Tools",
-        displayName: "§2§lTool Time",
+        displayName: "Tool Time",
         description: "§7Right tool for the Job",
         icon: "textures/ui/groupIcons/tool_icon.png",
-        order: 0,
+        order: 100,
+        enabled: true,
         settings: {
             // Custom settings can override defaults
             maxCollectionsPerGroup: 100
@@ -24,10 +30,11 @@ export const COLLECTION_GROUPS = [
     {
         id: "group_mining",
         name: "Mining",
-        displayName: "§2§lMining",
+        displayName: "Mining",
         description: "§7Mine your way to success!",
         icon: "textures/ui/groupIcons/mining_icon.png",
-        order: 10,
+        order: 200,
+        enabled: true,
         settings: {
             maxCollectionsPerGroup: 100  // Mining might need more slots
         }
@@ -35,39 +42,122 @@ export const COLLECTION_GROUPS = [
     {
         id: "group_farming",
         name: "Farming",
-        displayName: "§2§lFarming",
+        displayName: "Farming",
         description: "§7Grow your farming empire!",
         icon: "textures/ui/groupIcons/farming_icon.png",
-        order: 20
+        order: 300,
+        enabled: true
     },
     {
         id: "group_combat",
         name: "Combat",
-        displayName: "§2§lCombat",
+        displayName: "Combat",
         description: "§7Prove your combat prowess!",
         icon: "textures/ui/groupIcons/combat_icon.png",
-        order: 40
+        order: 400,
+        enabled: true
     },
     {
         id: "group_technology",
         name: "Technology",
-        displayName: "§2§lTech",
+        displayName: "Tech",
         description: "§7Time to Automate",
         icon: "textures/ui/groupIcons/tech_icon.png",
-        order: 50
+        order: 500,
+        enabled: true
     },
     {
         id: "group_fishing",
         name: "Fishing",
-        displayName: "§2§lTime to Fish",
+        displayName: "Time to Fish",
         description: "§7Cast a line....",
         icon: "textures/ui/groupIcons/fishing_icon.png",
-        order: 60
+        order: 600,
+        enabled: true
+    },
+    {
+        id: "group_spare",
+        name: "spare",
+        displayName: "Spare",
+        description: "§7Spare",
+        icon: "textures/ui/groupIcons/fishing_icon.png",
+        order: 700,
+        enabled: true
     }
 ];
 
 // Helper class for managing collection groups
 export class CollectionGroupManager {
+    static #GROUP_STORAGE_KEY = 'sk_group_states';
+
+    /**
+     * Gets currecnt state of groups
+     * @returns groupstates
+     */
+    static async getGroupStates() {
+        try {
+            const stored = world.getDynamicProperty(this.#GROUP_STORAGE_KEY);
+            return stored ? JSON.parse(stored) : {};
+        } catch (error) {
+            Logger.log(`Error getting group states: ${error}`, "ERROR", "CONFIG");
+            return {};
+        }
+    }
+
+    /**
+     * Sets state of group
+     * @param {*} groupId 
+     * @param {*} enabled 
+     * @returns bool if state set
+     */
+    static async setGroupState(groupId, enabled) {
+        try {
+            if (!this.isValidGroupId(groupId)) {
+                throw new Error(`Invalid group ID: ${groupId}`);
+            }
+
+            const states = await this.getGroupStates();
+            states[groupId] = enabled;
+            world.setDynamicProperty(this.#GROUP_STORAGE_KEY, JSON.stringify(states));
+            
+            Logger.log(`Group ${groupId} ${enabled ? 'enabled' : 'disabled'}`, "DEBUG", "CONFIG");
+            return true;
+        } catch (error) {
+            Logger.log(`Error setting group state: ${error}`, "ERROR", "CONFIG");
+            return false;
+        }
+    }
+
+    /**
+     * Is teh group enabled
+     * @param {*} groupId 
+     * @returns true if group is enabled
+     */
+    static async isGroupEnabled(groupId) {
+        try {
+            const states = await this.getGroupStates();
+            // If no state is stored, use the default from group definition
+            return states[groupId] ?? COLLECTION_GROUPS.find(g => g.id === groupId)?.enabled ?? true;
+        } catch (error) {
+            Logger.log(`Error checking group state: ${error}`, "ERROR", "CONFIG");
+            return true; // Default to enabled on error
+        }
+    }
+
+    /**
+     * Get all enabeld groups
+     * @returns all enabeld groups
+     */
+    static async getEnabledGroups() {
+        const groups = [];
+        for (const group of COLLECTION_GROUPS) {
+            if (await this.isGroupEnabled(group.id)) {
+                groups.push(group);
+            }
+        }
+        return groups.sort((a, b) => a.order - b.order);
+    }
+
     /**
      * Get a collection group by its ID
      * @param {string} groupId - The ID of the group to find
@@ -148,6 +238,183 @@ export class CollectionGroupManager {
      */
     static isValidGroupId(groupId) {
         return COLLECTION_GROUPS.some(group => group.id === groupId);
+    }
+
+      /**
+     * Gets groups that have active collections for a player.
+     * A group is considered active if:
+     * 1. The group itself is enabled
+     * 2. It has at least one enabled collection
+     * 3. The player has at least one incomplete collection in the group
+     * 
+     * @param {import("@minecraft/server").Player} player - The player to check
+     * @returns {Promise<Array>} Array of groups with active collections
+     */
+      static async getActiveGroupsForPlayer(player) {
+        try {
+            // Get all enabled collections and player progress
+            const enabledCollections = CollectionManager.getEnabledCollections();
+            const playerProgress = await CollectionHandler.getPlayerProgress(player);
+    
+            // Get group states
+            const groupStates = await this.getGroupStates();
+    
+            // Filter groups to only those that are enabled and have active collections
+            const activeGroups = [];
+            
+            for (const group of COLLECTION_GROUPS) {
+                // Skip if group is explicitly disabled
+                const isEnabled = groupStates[group.id] ?? group.enabled ?? true;
+                if (!isEnabled) {
+                    Logger.log(`Group ${group.id} is disabled, skipping`, "DEBUG", "CONFIG");
+                    continue;
+                }
+    
+                // Get enabled collections for this group
+                const groupCollections = enabledCollections.filter(c => c.parentId === group.id);
+                
+                // Skip if no enabled collections in this group
+                if (groupCollections.length === 0) {
+                    Logger.log(`Group ${group.id} has no enabled collections, skipping`, "DEBUG", "CONFIG");
+                    continue;
+                }
+    
+                // Check if any enabled collection in this group is incomplete
+                const hasIncompleteCollections = groupCollections.some(collection => {
+                    const collectionProgress = playerProgress[collection.id];
+                    return !collectionProgress?.completed;
+                });
+    
+                // Only add group if it has incomplete collections
+                if (hasIncompleteCollections) {
+                    activeGroups.push(group);
+                    Logger.log(`Group ${group.id} added to active groups - has incomplete collections`, "DEBUG", "CONFIG");
+                } else {
+                    Logger.log(`Group ${group.id} skipped - all collections completed`, "DEBUG", "CONFIG");
+                }
+            }
+    
+            // Sort groups by their defined order
+            return activeGroups.sort((a, b) => a.order - b.order);
+    
+        } catch (error) {
+            Logger.log(`Error getting active groups for player: ${error}`, "ERROR", "CONFIG");
+            return [];
+        }
+    }
+
+    /**
+     * Resets all collection groups to their default states
+     * This is primarily for development/testing purposes
+     * @returns {Promise<boolean>} Success status of the reset operation
+     */
+    static async resetToDefaults() {
+        try {
+            Logger.log("Starting collection groups reset to defaults", "DEBUG", "CONFIG");
+
+            // Step 1: Clear all existing group states
+            world.setDynamicProperty(this.#GROUP_STORAGE_KEY, undefined);
+            Logger.log("Cleared existing group states", "DEBUG", "CONFIG");
+
+            // Step 2: Reset all group-specific storage
+            for (const group of COLLECTION_GROUPS) {
+                // Clear any group-specific dynamic properties
+                const groupKey = this.getGroupStorageKey(group.id);
+                world.setDynamicProperty(groupKey, undefined);
+                
+                Logger.log(`Reset storage for group: ${group.id}`, "DEBUG", "CONFIG");
+            }
+
+            // Step 3: Initialize default states
+            const defaultStates = {};
+            for (const group of COLLECTION_GROUPS) {
+                // Set each group to its default enabled state from COLLECTION_GROUPS
+                defaultStates[group.id] = group.enabled;
+            }
+
+            // Step 4: Save default states
+            world.setDynamicProperty(this.#GROUP_STORAGE_KEY, JSON.stringify(defaultStates));
+            Logger.log("Initialized default group states", "DEBUG", "CONFIG");
+
+            // Step 5: Verify the reset
+            const verifyStates = await this.getGroupStates();
+            let verified = true;
+            for (const group of COLLECTION_GROUPS) {
+                if (verifyStates[group.id] !== group.enabled) {
+                    verified = false;
+                    Logger.log(`Verification failed for group: ${group.id}`, "ERROR", "CONFIG");
+                    break;
+                }
+            }
+
+            if (verified) {
+                Logger.log("Successfully reset all collection groups to defaults", "DEBUG", "CONFIG");
+                return true;
+            } else {
+                throw new Error("Group state verification failed");
+            }
+
+        } catch (error) {
+            Logger.log(`Failed to reset collection groups: ${error}`, "ERROR", "CONFIG");
+            return false;
+        }
+    }
+
+    /**
+     * Resets all collection groups to their default states
+     * This is primarily for development/testing purposes
+     * @returns {Promise<boolean>} Success status of the reset operation
+     */
+    static async resetToDefaults() {
+        try {
+            Logger.log("Starting collection groups reset to defaults", "DEBUG", "CONFIG");
+
+            // Step 1: Clear all existing group states
+            world.setDynamicProperty(this.#GROUP_STORAGE_KEY, undefined);
+            Logger.log("Cleared existing group states", "DEBUG", "CONFIG");
+
+            // Step 2: Reset all group-specific storage
+            for (const group of COLLECTION_GROUPS) {
+                // Clear any group-specific dynamic properties
+                const groupKey = this.getGroupStorageKey(group.id);
+                world.setDynamicProperty(groupKey, undefined);
+                
+                Logger.log(`Reset storage for group: ${group.id}`, "DEBUG", "CONFIG");
+            }
+
+            // Step 3: Initialize default states
+            const defaultStates = {};
+            for (const group of COLLECTION_GROUPS) {
+                // Set each group to its default enabled state from COLLECTION_GROUPS
+                defaultStates[group.id] = group.enabled;
+            }
+
+            // Step 4: Save default states
+            world.setDynamicProperty(this.#GROUP_STORAGE_KEY, JSON.stringify(defaultStates));
+            Logger.log("Initialized default group states", "DEBUG", "CONFIG");
+
+            // Step 5: Verify the reset
+            const verifyStates = await this.getGroupStates();
+            let verified = true;
+            for (const group of COLLECTION_GROUPS) {
+                if (verifyStates[group.id] !== group.enabled) {
+                    verified = false;
+                    Logger.log(`Verification failed for group: ${group.id}`, "ERROR", "CONFIG");
+                    break;
+                }
+            }
+
+            if (verified) {
+                Logger.log("Successfully reset all collection groups to defaults", "DEBUG", "CONFIG");
+                return true;
+            } else {
+                throw new Error("Group state verification failed");
+            }
+
+        } catch (error) {
+            Logger.log(`Failed to reset collection groups: ${error}`, "ERROR", "CONFIG");
+            return false;
+        }
     }
 }
 

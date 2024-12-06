@@ -147,7 +147,7 @@ export class CollectionHandler {
             await this.savePlayerProgress(player, progress);
 
             // Format reward message
-            let message = `§a§lCollection Complete! §r§a${collection.displayName}\n`;
+            let message = `§q§lCollection Complete! §r§q${collection.displayName}\n`;
             if (grantedRewards.length > 0) {
                 message += `§7Rewards granted:\n§7- ${grantedRewards.join('\n§7- ')}\n`;
             }

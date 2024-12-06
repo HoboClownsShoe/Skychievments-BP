@@ -1,31 +1,333 @@
 // scripts/config/collections.js
 import { world } from '@minecraft/server';
-import { DEFAULT_COLLECTIONS } from './defaultCollections.js';
 import { Logger } from '../utils/logger.js';
 import { COLLECTION_GROUPS, CollectionGroupManager } from './collectionGroups.js';
+
+export const DEFAULT_COLLECTIONS = {
+    // Mining group collections
+    "group_mining": [
+        {
+            "id": "cobblestone_1",
+            "parentId": "group_mining",
+            "displayName": "Stone Age Begins",
+            "description": "Your first stepping stone to success! Gather basic building materials.",
+            "icon": "textures/ui/mining_icon.png",
+            "requirements": [
+                {
+                    "itemId": "minecraft:cobblestone",
+                    "amount": 64
+                }
+            ],
+            "rewards": [
+                {
+                    "type": "item",
+                    "itemId": "minecraft:stone_pickaxe",
+                    "amount": 1,
+                    "displayText": "1x Stone Pickaxe"
+                },
+                {
+                    "type": "command",
+                    "command": "effect @p haste 300 1",
+                    "displayText": "Haste I Effect (5 minutes)"
+                }
+            ],
+            "enabled": true,
+            "order": 0
+        },
+        {
+            "id": "coal_mining_1",
+            "parentId": "group_mining",
+            "displayName": "Coal Hunter",
+            "description": "Begin your journey into resource gathering with coal.",
+            "icon": "textures/blocks/coal_ore.png",
+            "requirements": [
+                {
+                    "itemId": "minecraft:coal",
+                    "amount": 32
+                }
+            ],
+            "rewards": [
+                {
+                    "type": "item",
+                    "itemId": "minecraft:torch",
+                    "amount": 32,
+                    "displayText": "32x Torches"
+                },
+                {
+                    "type": "item",
+                    "itemId": "minecraft:coal_block",
+                    "amount": 1,
+                    "displayText": "1x Block of Coal"
+                }
+            ],
+            "enabled": true,
+            "order": 1
+        }
+    ],
+
+    // Farming group collections
+    "group_farming": [
+        {
+            "id": "wheat_farming_1",
+            "parentId": "group_farming",
+            "displayName": "Beginning Farmer",
+            "description": "Start your farming journey with wheat cultivation.",
+            "icon": "textures/items/wheat.png",
+            "requirements": [
+                {
+                    "itemId": "minecraft:wheat",
+                    "amount": 64
+                }
+            ],
+            "rewards": [
+                {
+                    "type": "item",
+                    "itemId": "minecraft:bread",
+                    "amount": 16,
+                    "displayText": "16x Bread"
+                },
+                {
+                    "type": "item",
+                    "itemId": "minecraft:bone_meal",
+                    "amount": 16,
+                    "displayText": "16x Bone Meal"
+                }
+            ],
+            "enabled": true,
+            "order": 0
+        },
+        {
+            "id": "carrot_farming_1",
+            "parentId": "group_farming",
+            "displayName": "Carrot Collector",
+            "description": "Expand your farm with nutritious carrots.",
+            "icon": "textures/items/carrot.png",
+            "requirements": [
+                {
+                    "itemId": "minecraft:carrot",
+                    "amount": 64
+                }
+            ],
+            "rewards": [
+                {
+                    "type": "item",
+                    "itemId": "minecraft:golden_carrot",
+                    "amount": 8,
+                    "displayText": "8x Golden Carrots"
+                },
+                {
+                    "type": "command",
+                    "command": "effect @p night_vision 600 0",
+                    "displayText": "Night Vision (10 minutes)"
+                }
+            ],
+            "enabled": true,
+            "order": 1
+        }
+    ],
+
+    // Tools group collections
+    "group_tools": [
+        {
+            "id": "basic_tools_1",
+            "parentId": "group_tools",
+            "displayName": "Tool Collector I",
+            "description": "Craft your first set of basic tools.",
+            "icon": "textures/items/wood_pickaxe.png",
+            "requirements": [
+                {
+                    "itemId": "minecraft:wooden_pickaxe",
+                    "amount": 1
+                },
+                {
+                    "itemId": "minecraft:wooden_axe",
+                    "amount": 1
+                },
+                {
+                    "itemId": "minecraft:wooden_shovel",
+                    "amount": 1
+                }
+            ],
+            "rewards": [
+                {
+                    "type": "item",
+                    "itemId": "minecraft:stone_pickaxe",
+                    "amount": 1,
+                    "displayText": "1x Stone Pickaxe"
+                },
+                {
+                    "type": "item",
+                    "itemId": "minecraft:stone_axe",
+                    "amount": 1,
+                    "displayText": "1x Stone Axe"
+                },
+                {
+                    "type": "item",
+                    "itemId": "minecraft:stone_shovel",
+                    "amount": 1,
+                    "displayText": "1x Stone Shovel"
+                }
+            ],
+            "enabled": true,
+            "order": 0
+        }
+    ],
+
+    // Combat group collections
+    "group_combat": [
+        {
+            "id": "zombie_hunter_1",
+            "parentId": "group_combat",
+            "displayName": "Zombie Hunter I",
+            "description": "Begin your combat training by collecting zombie drops.",
+            "icon": "textures/items/rotten_flesh.png",
+            "requirements": [
+                {
+                    "itemId": "minecraft:rotten_flesh",
+                    "amount": 64
+                }
+            ],
+            "rewards": [
+                {
+                    "type": "item",
+                    "itemId": "minecraft:iron_sword",
+                    "amount": 1,
+                    "displayText": "1x Iron Sword"
+                },
+                {
+                    "type": "command",
+                    "command": "effect @p strength 300 0",
+                    "displayText": "Strength I (5 minutes)"
+                }
+            ],
+            "enabled": true,
+            "order": 0
+        }
+    ],
+
+    // Technology group collections
+    "group_technology": [
+        {
+            "id": "redstone_basics_1",
+            "parentId": "group_technology",
+            "displayName": "Redstone Beginner",
+            "description": "Start your journey into redstone technology.",
+            "icon": "textures/items/redstone_dust.png",
+            "requirements": [
+                {
+                    "itemId": "minecraft:redstone",
+                    "amount": 32
+                }
+            ],
+            "rewards": [
+                {
+                    "type": "item",
+                    "itemId": "minecraft:repeater",
+                    "amount": 4,
+                    "displayText": "4x Redstone Repeater"
+                },
+                {
+                    "type": "item",
+                    "itemId": "minecraft:piston",
+                    "amount": 2,
+                    "displayText": "2x Piston"
+                }
+            ],
+            "enabled": true,
+            "order": 0
+        }
+    ],
+
+    // Fishing group collections
+    "group_fishing": [
+        {
+            "id": "fishing_starter_1",
+            "parentId": "group_fishing",
+            "displayName": "Fishing Beginner",
+            "description": "Begin your fishing adventure!",
+            "icon": "textures/items/fish_raw.png",
+            "requirements": [
+                {
+                    "itemId": "minecraft:cod",
+                    "amount": 16
+                }
+            ],
+            "rewards": [
+                {
+                    "type": "item",
+                    "itemId": "minecraft:fishing_rod",
+                    "amount": 1,
+                    "displayText": "1x Fishing Rod (Enchanted)",
+                    "enchantments": [
+                        {
+                            "id": "minecraft:luck_of_the_sea",
+                            "level": 1
+                        }
+                    ]
+                }
+            ],
+            "enabled": true,
+            "order": 0
+        }
+    ]
+};
 
 export class CollectionManager {
     static #STORAGE_PREFIX = 'sk_collections_group_';
     static #INITIAL_LOAD_KEY = 'sk_initial_load_complete';
     static #collectionsCache = null;
 
+
     static async loadCollections(groupId = null) {
         try {
-            // Check if this is the initial load
-            const isInitialLoad = !world.getDynamicProperty(this.#INITIAL_LOAD_KEY);
-
-            if (isInitialLoad) {
-                // On initial load, use hardcoded defaults
-                Logger.log("Performing initial load from hardcoded defaults", "INFO", "CONFIG");
-                const success = await this.#loadFromDefaults(true);
-                if (success) {
-                    world.setDynamicProperty(this.#INITIAL_LOAD_KEY, 'true');
+            // If no groupId specified, load all groups
+            if (!groupId) {
+                let success = true;
+                for (const group of CollectionGroupManager.getGroupIds()) {
+                    // We now treat a group with no collections as a success case
+                    await this.loadCollections(group);
                 }
                 return success;
             }
 
-            // For subsequent loads, load from dynamic properties
-            return await this.#loadFromStorage(groupId);
+            // Get storage key for this group
+            const storageKey = `${this.#STORAGE_PREFIX}${groupId}`;
+
+            // Try to load existing collections for this group
+            const storedData = world.getDynamicProperty(storageKey);
+
+            let groupCollections = [];
+            if (storedData) {
+                // If we have stored collections, use those
+                groupCollections = JSON.parse(storedData);
+            } else {
+                // No stored collections, check defaults
+                groupCollections = DEFAULT_COLLECTIONS[groupId] || [];
+
+                // Even if there are no collections, we still save an empty array
+                // This marks the group as initialized
+                world.setDynamicProperty(storageKey, JSON.stringify(groupCollections));
+                Logger.log(`Initialized empty collection group: ${groupId}`, "DEBUG", "CONFIG");
+            }
+
+            // Update cache
+            if (!this.#collectionsCache) {
+                this.#collectionsCache = [];
+            }
+
+            // Remove existing collections for this group from cache
+            this.#collectionsCache = this.#collectionsCache.filter(
+                c => c.parentId !== groupId
+            );
+
+            // Add loaded collections to cache
+            this.#collectionsCache.push(...groupCollections);
+
+            Logger.log(
+                `Loaded ${groupCollections.length} collections for group ${groupId}`, "DEBUG", "CONFIG"
+            );
+
+            return true;
 
         } catch (error) {
             Logger.log(`Failed to load collections: ${error}`, "ERROR", "CONFIG");
@@ -33,10 +335,10 @@ export class CollectionManager {
         }
     }
 
-/**
-     * Loads collections from hardcoded defaults
-     * @param {boolean} setAsStorage If true, saves the defaults to dynamic properties
-     */
+    /**
+         * Loads collections from hardcoded defaults
+         * @param {boolean} setAsStorage If true, saves the defaults to dynamic properties
+         */
     static async #loadFromDefaults(setAsStorage = false) {
         try {
             let success = true;
@@ -45,7 +347,7 @@ export class CollectionManager {
             // Load each group's collections from defaults
             for (const groupId of CollectionGroupManager.getGroupIds()) {
                 const defaultCollections = DEFAULT_COLLECTIONS[groupId] || [];
-                
+
                 if (setAsStorage) {
                     // Save to dynamic properties if this is initial load
                     const storageKey = `${this.#STORAGE_PREFIX}${groupId}`;
@@ -53,7 +355,7 @@ export class CollectionManager {
                 }
 
                 this.#collectionsCache.push(...defaultCollections);
-                Logger.log(`Loaded ${defaultCollections.length} default collections for group ${groupId}`, "INFO", "CONFIG");
+                Logger.log(`Loaded ${defaultCollections.length} default collections for group ${groupId}`, "DEBUG", "CONFIG");
             }
 
             return success;
@@ -84,7 +386,7 @@ export class CollectionManager {
             // Load specific group
             const storageKey = `${this.#STORAGE_PREFIX}${groupId}`;
             const storedData = world.getDynamicProperty(storageKey);
-            
+
             if (!storedData) {
                 Logger.log(`No stored collections found for group ${groupId}`, "WARN", "CONFIG");
                 return false;
@@ -96,14 +398,14 @@ export class CollectionManager {
             if (!this.#collectionsCache) {
                 this.#collectionsCache = [];
             }
-            
+
             // Remove existing collections for this group
             this.#collectionsCache = this.#collectionsCache.filter(c => c.parentId !== groupId);
-            
+
             // Add loaded collections
             this.#collectionsCache.push(...groupCollections);
 
-            Logger.log(`Loaded ${groupCollections.length} collections for group ${groupId}`, "INFO", "CONFIG");
+            Logger.log(`Loaded ${groupCollections.length} collections for group ${groupId}`, "DEBUG", "CONFIG");
             return true;
 
         } catch (error) {
@@ -134,8 +436,8 @@ export class CollectionManager {
                     currentCollections.push(...newCollections);
                     world.setDynamicProperty(storageKey, JSON.stringify(currentCollections));
                     addedCollections += newCollections.length;
-                    
-                    Logger.log(`Added ${newCollections.length} new collections to group ${groupId}`, "INFO", "CONFIG");
+
+                    Logger.log(`Added ${newCollections.length} new collections to group ${groupId}`, "DEBUG", "CONFIG");
                 }
             }
 
@@ -150,9 +452,9 @@ export class CollectionManager {
         }
     }
 
-/**
-     * Development function to completely reset the system
-     */
+    /**
+         * Development function to completely reset the system
+         */
     static async resetToDefaults() {
         try {
             // Clear initial load flag
@@ -210,43 +512,43 @@ export class CollectionManager {
                 Logger.log("Missing required collection fields", "ERROR", "CONFIG");
                 return false;
             }
-    
+
             // Validate group ID
             if (!CollectionGroupManager.getGroupById(collection.parentId)) {
                 Logger.log(`Invalid group ID: ${collection.parentId}`, "ERROR", "CONFIG");
                 return false;
             }
-    
+
             // Get the storage key for this group
             const storageKey = `${this.#STORAGE_PREFIX}${collection.parentId}`;
-    
+
             // Get current collections for this group
             let groupCollections = [];
             const storedData = world.getDynamicProperty(storageKey);
             if (storedData) {
                 groupCollections = JSON.parse(storedData);
             }
-    
+
             // Check if collection ID already exists
             if (groupCollections.some(c => c.id === collection.id)) {
                 Logger.log(`Collection ID ${collection.id} already exists`, "ERROR", "CONFIG");
                 return false;
             }
-    
+
             // Add the new collection
             groupCollections.push(collection);
-    
+
             // Save updated collections
             world.setDynamicProperty(storageKey, JSON.stringify(groupCollections));
-    
+
             // Update cache if it exists
             if (this.#collectionsCache) {
                 this.#collectionsCache.push(collection);
             }
-    
-            Logger.log(`Collection added successfully: ${collection.id}`, "INFO", "CONFIG");
+
+            Logger.log(`Collection added successfully: ${collection.id}`, "DEBUG", "CONFIG");
             return true;
-    
+
         } catch (error) {
             Logger.log(`Failed to add collection: ${error}`, "ERROR", "CONFIG");
             return false;
@@ -305,11 +607,11 @@ export class CollectionManager {
         }
     }
 
-     /**
-     * Calculates the approximate storage size of a collection in bytes.
-     * This helps track how much space each collection uses in the dynamic property.
-     */
-     static #calculateCollectionSize(collection) {
+    /**
+    * Calculates the approximate storage size of a collection in bytes.
+    * This helps track how much space each collection uses in the dynamic property.
+    */
+    static #calculateCollectionSize(collection) {
         try {
             // Convert to JSON and measure the string length in bytes
             const jsonString = JSON.stringify(collection);
@@ -335,7 +637,7 @@ export class CollectionManager {
                 const groupKey = `${this.#STORAGE_PREFIX}${group.id}`;
                 const rawData = world.getDynamicProperty(groupKey);
                 const collections = rawData ? JSON.parse(rawData) : [];
-                
+
                 // Calculate total size used
                 const usedSize = rawData ? rawData.length * 2 : 0;
                 const collectionSizes = collections.map(c => ({
@@ -354,7 +656,7 @@ export class CollectionManager {
                     largestCollections: collectionSizes
                         .sort((a, b) => b.size - a.size)
                         .slice(0, 5),
-                    averageCollectionSize: collections.length > 0 
+                    averageCollectionSize: collections.length > 0
                         ? (usedSize / collections.length).toFixed(1)
                         : 0
                 };
@@ -410,14 +712,14 @@ export class CollectionManager {
             output += `§7Collections: ${groupStats.enabledCollections}/${groupStats.totalCollections} enabled§r\n`;
             output += `§7Space Used: ${(groupStats.usedSpace / 1024).toFixed(1)}KB/${(32).toFixed(1)}KB (${groupStats.spaceUsedPercent}%)§r\n`;
             output += `§7Remaining Collections: ${groupStats.remainingCollections}§r\n`;
-            
+
             if (groupStats.largestCollections.length > 0) {
                 output += "§7Largest Collections:§r\n";
                 groupStats.largestCollections.forEach(c => {
                     output += `  §8- ${c.id}: ${(c.size / 1024).toFixed(1)}KB§r\n`;
                 });
             }
-            
+
             output += `§7Average Collection Size: ${(groupStats.averageCollectionSize / 1024).toFixed(1)}KB§r\n\n`;
         }
 
@@ -431,4 +733,54 @@ export class CollectionManager {
 
         return output;
     }
+
+    static getDefaultCollectionsForGroup(groupId) {
+        return DEFAULT_COLLECTIONS[groupId] || [];
+    }
+
+    static getDefaultCollectionsForGroup(groupId) {
+        return DEFAULT_COLLECTIONS[groupId] || [];
+    }
+    
+    static validateDefaultCollections() {
+        let isValid = true;
+        const errors = [];
+    
+        for (const [groupId, collections] of Object.entries(DEFAULT_COLLECTIONS)) {
+            // Check each collection in the group
+            collections.forEach(collection => {
+                if (!collection.id || !collection.parentId || !collection.displayName) {
+                    errors.push(`Invalid collection in group ${groupId}: Missing required fields`);
+                    isValid = false;
+                }
+    
+                if (collection.parentId !== groupId) {
+                    errors.push(`Collection ${collection.id} has mismatched parentId (${collection.parentId}) for group ${groupId}`);
+                    isValid = false;
+                }
+    
+                // Validate requirements
+                if (!Array.isArray(collection.requirements) || collection.requirements.length === 0) {
+                    errors.push(`Collection ${collection.id} has invalid requirements`);
+                    isValid = false;
+                }
+    
+                // Validate rewards
+                if (!Array.isArray(collection.rewards) || collection.rewards.length === 0) {
+                    errors.push(`Collection ${collection.id} has invalid rewards`);
+                    isValid = false;
+                }
+            });
+        }
+    
+        return { isValid, errors };
+    }
+
+    static getTotalDefaultCollections() {
+        return Object.values(DEFAULT_COLLECTIONS)
+            .reduce((total, collections) => total + collections.length, 0);
+    }
+
 }
+
+   

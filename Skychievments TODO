@@ -1,14 +1,39 @@
+Skychievemnts Flow
+
+
+player loads QuestBook
+player chooses a Group
+    script scans players inventory
+    counts up all items/blocks
+        checks the totals against all the enabled collections within the chosen group
+        any totals that match the requried amount, the collection is marked as Claimable
+
+
+
+
+
 Skychievments bug list
 
-playerMenu Item needs a new texture
+playerMenu(QuestBook) Item needs a new texture
 
+players will NOT refesh the groups/collections if a new one is added into Default_ while they are online
 
+completed quests are not shown on in the Players Collections
+no icon for "no active quests" in players collections
+font needs changing in players group menu
+collectionDetails form too big
 
 
 
 Skychievments features to add
 
-on player inital spawn give playerMenu item
+on player inital spawn give playerMenu(QuestBook) item
+
+Killer quest type
+Breeder questType
+Eater questtype
+Rider questType
+Tamer questType
 
 
 
@@ -32,5 +57,8 @@ player can look into each group
 each group shows the current collections to be claimed and any claimed collections
 
 
+Admin Taks
+    enable/disable groups (disabled groups dont show in player quests)
+    
 
 

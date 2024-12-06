@@ -9,36 +9,34 @@ import { Logger } from '../utils/logger.js';
 export class PlayerMenu {
     static async showMainMenu(player) {
         try {
-            // Initialize/update player collections first
-            const allCollections = CollectionManager.getEnabledCollections();
-            const progress = await CollectionHandler.getCompletedCollections(player);
+            // Get active groups and completed collections
+            const activeGroups = await CollectionGroupManager.getActiveGroupsForPlayer(player);
+            const completedCollections = await CollectionHandler.getCompletedCollections(player);
             
             const menu = new ActionFormData()
                 .title("Skychievments")
                 .body("§7Select a category to view:\n");
 
-            // Get groups in correct order using CollectionGroupManager
-            const orderedGroups = CollectionGroupManager.getGroupIds()
-                .map(id => CollectionGroupManager.getGroupById(id));
-
-            // Add group buttons with collection counts
-            orderedGroups.forEach(group => {
-                const groupCollections = allCollections.filter(c => c.parentId === group.id);
-                const totalInGroup = groupCollections.length;
-                const completedInGroup = progress.filter(completed => 
-                    groupCollections.some(c => c.id === completed.id)
-                ).length;
-
-                menu.button(
-                    `${group.displayName}\n§8${completedInGroup}/${totalInGroup}`,
-                    group.icon
-                );
+            // Add buttons for active groups
+            activeGroups.forEach(group => {
+                menu.button(group.displayName, group.icon);
             });
+
+            // Add completed collections button if player has any
+            if (completedCollections.length > 0) {
+                menu.button("Completed Quests", "textures/ui/check.png");
+            }
 
             const response = await menu.show(player);
             
-            if (!response.canceled && response.selection < orderedGroups.length) {
-                await this.showGroupCollections(player, orderedGroups[response.selection]);
+            if (!response.canceled) {
+                if (response.selection < activeGroups.length) {
+                    // Selected a group
+                    await this.showGroupCollections(player, activeGroups[response.selection]);
+                } else if (completedCollections.length > 0 && response.selection === activeGroups.length) {
+                    // Selected completed collections
+                    await this.showCompletedCollections(player);
+                }
             }
         } catch (error) {
             Logger.log(`Error in player main menu: ${error}`, "ERROR", "PLAYER_UI");
@@ -47,6 +45,13 @@ export class PlayerMenu {
 
     static async showGroupCollections(player, group) {
         try {
+            const isEnabled = await CollectionGroupManager.isGroupEnabled(group.id);
+            if (!isEnabled) {
+                player.sendMessage('§cThis collection group is currently disabled.');
+                await this.showMainMenu(player);
+                return;
+            }
+
             if (!CollectionGroupManager.isValidGroupId(group.id)) {
                 Logger.log(`Invalid group ID: ${group.id}`, "ERROR", "PLAYER_UI");
                 return;
@@ -75,7 +80,7 @@ export class PlayerMenu {
                     .join('\n') + '\n' : '';
 
             const menu = new ActionFormData()
-                .title(group.displayName)
+                .title(`§p§r§e§f§i§x§r${group.displayName}`)
                 .body(`${group.description}${completedText}\n`);
 
             // Add uncompleted collections as buttons
@@ -88,18 +93,19 @@ export class PlayerMenu {
                     // Build progress text for each requirement
                     collection.requirements.forEach((req, index) => {
                         const current = collectionProgress?.requirements[index]?.amount || 0;
-                        progressText += `\n${claimableData ? '§a' : '§6'}${current}/${req.amount} ${req.itemId.split(':')[1]}`;
+                        progressText += `\n${claimableData ? '§2' : '§6'}${current}/${req.amount} ${req.itemId.split(':')[1]}`;
                     });
 
                     menu.button(
-                        `${collection.displayName}${progressText}${claimableData ? '\n§a(Claim It!)' : ''}`
+                      //  `${collection.displayName}${claimableData ? '\n§q(Claim It!)' : ''}`, collection.icon
+                        `${claimableData ? '§q[*] ' : ''}${collection.displayName}`, collection.icon
                     );
                 });
             } else {
                 menu.button("§cNo Active Collections\n§8All collections completed!");
             }
 
-            menu.button("Back to Menu\n§8Return to main menu");
+            menu.button("Back to Menu", "textures/ui/imagelesshoverbg.png");
 
             const response = await menu.show(player);
             
@@ -128,7 +134,7 @@ export class PlayerMenu {
             // Build requirements text using progress data
             const requirementsText = collection.requirements.map((req, index) => {
                 const current = claimableData?.requirements[index]?.amount || 0;
-                return `§7${req.itemId.split(':')[1]}: ${claimableData ? '§a' : '§f'}${current}/${req.amount}`;
+                return `§7${req.itemId.split(':')[1]}: ${claimableData ? '§q' : '§f'}${current}/${req.amount}`;
             }).join('\n');
 
             // Build rewards text
@@ -173,6 +179,172 @@ export class PlayerMenu {
         } catch (error) {
             Logger.log(`Error showing collection details: ${error}`, "ERROR", "PLAYER_UI");
             player.sendMessage('§cAn error occurred while showing collection details.');
+        }
+    }
+
+    // Enhanced completed collections viewer for PlayerMenu
+    static async showCompletedCollections(player) {
+        try {
+            // Get all completed collections data
+            const completedCollections = await CollectionHandler.getCompletedCollections(player);
+            if (completedCollections.length === 0) {
+                player.sendMessage('§cNo completed collections found.');
+                await this.showMainMenu(player);
+                return;
+            }
+
+            // Get all collection data and organize by groups
+            const allCollections = CollectionManager.getCollections();
+            const groupedCollections = new Map();
+
+            // Sort and group completed collections by their parent groups
+            completedCollections.forEach(completed => {
+                const collection = allCollections.find(c => c.id === completed.id);
+                if (!collection) return;
+
+                if (!groupedCollections.has(collection.parentId)) {
+                    groupedCollections.set(collection.parentId, []);
+                }
+                groupedCollections.get(collection.parentId).push({
+                    ...collection,
+                    completedAt: completed.completedAt
+                });
+            });
+
+            // Create menu with group selection
+            const menu = new ActionFormData()
+                .title("Completed Collections")
+                .body(`§7Your completed collections:\n`);
+
+            // Add each group that has completed collections
+            const groupsWithCompletions = [];
+            for (const [groupId, collections] of groupedCollections) {
+                const group = CollectionGroupManager.getGroupById(groupId);
+                if (!group) continue;
+
+                groupsWithCompletions.push({
+                    group,
+                    collections: collections.sort((a, b) => a.order - b.order)
+                });
+            }
+
+            // Sort groups by their configured order
+            groupsWithCompletions.sort((a, b) => a.group.order - b.group.order);
+
+            // Add menu buttons for each group
+            groupsWithCompletions.forEach(({ group, collections }) => {
+                menu.button(
+                    `${group.displayName}`,
+                    group.icon
+                );
+            });
+
+            // Add back button
+            menu.button("Back to Menu", "textures/ui/arrow_dark_left_stretch.png");
+
+            const response = await menu.show(player);
+
+            if (!response.canceled) {
+                if (response.selection < groupsWithCompletions.length) {
+                    // Show collections for selected group
+                    const selectedGroup = groupsWithCompletions[response.selection];
+                    await this.showCompletedGroupDetails(
+                        player,
+                        selectedGroup.group,
+                        selectedGroup.collections
+                    );
+                } else {
+                    // Return to main menu
+                    await this.showMainMenu(player);
+                }
+            }
+
+        } catch (error) {
+            Logger.log(`Error showing completed collections: ${error}`, "ERROR", "PLAYER_UI");
+            await this.showMainMenu(player);
+        }
+    }
+
+    static async showCompletedGroupDetails(player, group, completedCollections) {
+        try {
+            const menu = new ActionFormData()
+                .title(`${group.displayName}`)
+                .body(`§7View your completed achievements:\n`);
+
+            // Sort collections by completion date, newest first
+            const sortedCollections = completedCollections
+                .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
+
+            // Add each collection as a button
+            sortedCollections.forEach(collection => {
+                menu.button(
+                    `${collection.displayName}`,
+                    collection.icon
+                );
+            });
+
+            // Add back button
+            menu.button("Back to Categories", "textures/ui/arrow_dark_left_stretch.png");
+
+            const response = await menu.show(player);
+
+            if (!response.canceled) {
+                if (response.selection < sortedCollections.length) {
+                    // Show details for selected collection
+                    await this.showCompletedCollectionDetails(player, sortedCollections[response.selection]);
+                } else {
+                    // Return to completed collections menu
+                    await this.showCompletedCollections(player);
+                }
+            }
+
+        } catch (error) {
+            Logger.log(`Error showing completed group details: ${error}`, "ERROR", "PLAYER_UI");
+            await this.showCompletedCollections(player);
+        }
+    }
+
+    static async showCompletedCollectionDetails(player, collection) {
+        try {
+            // Format collection requirements and rewards for display
+            const requirementsText = collection.requirements
+                .map(req => `§7- ${req.amount}x ${req.itemId.split(':')[1]}`)
+                .join('\n');
+
+            const rewardsText = collection.rewards
+                .map(r => `§7- ${r.displayText}`)
+                .join('\n');
+
+            // Create detailed view menu
+            const menu = new ActionFormData()
+                .title(collection.displayName)
+                .body(
+                    `${collection.description}\n\n` +
+                    `§7Requirements:\n${requirementsText}\n\n` +
+                    `§7Rewards:\n${rewardsText}\n\n` +
+                    `§7Completed: §a✔`
+                )
+                .button("Back to Collections", "textures/ui/arrow_dark_left_stretch.png");
+
+            const response = await menu.show(player);
+
+            if (!response.canceled) {
+                // Return to group details
+                await this.showCompletedGroupDetails(
+                    player,
+                    CollectionGroupManager.getGroupById(collection.parentId),
+                    (await CollectionHandler.getCompletedCollections(player))
+                        .map(c => ({
+                            ...CollectionManager.getCollections().find(col => col.id === c.id),
+                            completedAt: c.completedAt
+                        }))
+                        .filter(c => c.parentId === collection.parentId)
+                );
+            }
+
+        } catch (error) {
+            Logger.log(`Error showing completed collection details: ${error}`, "ERROR", "PLAYER_UI");
+            await this.showCompletedCollections(player);
         }
     }
 

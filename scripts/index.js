@@ -8,10 +8,12 @@ import { Logger } from './utils/logger';
 import { Permissions } from './utils/permissions';
 import { CollectionGroupManager } from './config/collectionGroups';
 import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
+import { showTipToast } from './utils/toast.js'
 
 world.afterEvents.worldInitialize.subscribe(async () => {
     try {
-        Logger.log("Initializing Skychievments system...", "INFO", "MAIN");
+        Logger.log("Initializing Skychievments system...", "DEBUG", "MAIN");
+        
 
         // Initialize logger first for proper debugging
         Logger.initialize();
@@ -19,7 +21,7 @@ world.afterEvents.worldInitialize.subscribe(async () => {
         // Create admin_level objective if it doesn't exist
         if (!world.scoreboard.getObjective('admin_level')) {
             world.scoreboard.addObjective('admin_level', 'Admin Level');
-            Logger.log("Created admin_level scoreboard objective", "INFO", "MAIN");
+            Logger.log("Created admin_level scoreboard objective", "DEBUG", "MAIN");
         }
 
         // Load collections for each group
@@ -35,7 +37,7 @@ world.afterEvents.worldInitialize.subscribe(async () => {
         }
 
         if (loadSuccess) {
-            Logger.log("All collection groups loaded successfully", "INFO", "MAIN");
+            Logger.log("All collection groups loaded successfully", "DEBUG", "MAIN");
         } else {
             Logger.log("Some collection groups failed to load", "ERROR", "MAIN");
         }
@@ -45,10 +47,11 @@ world.afterEvents.worldInitialize.subscribe(async () => {
             if (Permissions.isAdmin(player)) {
                 player.sendMessage(
                     loadSuccess ? 
-                    "§a§lSkychievments initialized successfully!" :
+                    "§q§lSkychievments initialized successfully!"  :
                     "§c§lWarning: Some Skychievments collections failed to load. Check logs for details."
                 );
             }
+            if (!Permissions.isAdmin(player)) { showTipToast(player, loadSuccess ? 'finishInit' : 'failedInit');}
         }
 
     } catch (error) {
@@ -95,7 +98,9 @@ world.afterEvents.itemUse.subscribe((event) => {
                 PlayerMenu.showMainMenu(player);
                 break;
 
-            case "minecraft:compass": mfd.show(player); 
+            case "minecraft:compass": 
+                showTipToast(player, 'Hello');
+                //mfd.show(player); 
                 break;
 
         }
@@ -104,6 +109,17 @@ world.afterEvents.itemUse.subscribe((event) => {
     }
 });
 
-Logger.log("Skychievments UI system initialized", "INFO", "MAIN");
+world.afterEvents.playerSpawn.subscribe((event) => {
+    let { initialSpawn, player } = event;
+    if (!initialSpawn) return; //if its not he first spawn exit method
+
+    player.addTag('skychievements');
+    showTipToast(player, 'welcome')
+   
+
+
+});
+
+Logger.log("Skychievments UI system initialized", "DEBUG", "MAIN");
 
 
