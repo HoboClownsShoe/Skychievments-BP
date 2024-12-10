@@ -7,31 +7,490 @@ export const CREATIVE_CATEGORIES = {
         description: "§8Basic building materials",
         items: [
             {
-                id: "minecraft:stone",
+                id: "minecraft:polished_andesite",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:stripped_bamboo_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:polished_basalt",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:smooth_basalt",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:gilded_blackstone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:polished_blackstone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:bamboo_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:bone_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:brick_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:coal_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:copper_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:diamond_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:dripstone_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:emerald_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:gold_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:grass_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:hay_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:honey_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:honeycomb_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:iron_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:lapis_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:netherite_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:purpur_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:quartz_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:resin_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:deepslate_bricks",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:end_bricks",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:prismarine_bricks",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:quartz_bricks",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:resin_bricks",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:tuff_bricks",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:hardened_clay",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:mossy_cobblestone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:chiseled_deepslate",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:cobbled_deepslate",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:cracked_deepslate_bricks",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:cracked_deepslate_tiles",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:polished_deepslate",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:polished_diorite",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:polished_granite",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:muddy_mangrove_roots",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:bamboo_mosaic",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:packed_mud",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:chiseled_nether_bricks",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:cracked_nether_bricks",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:red_nether_brick",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:crying_obsidian",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:purpur_pillar",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:quartz_pillar",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:chiseled_polished_blackstone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:cracked_polished_blackstone_bricks",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:dark_prismarine",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:chiseled_quartz_block",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:smooth_quartz",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:chiseled_red_sandstone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:cut_red_sandstone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:smooth_red_sandstone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:chiseled_resin_bricks",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:red_sand",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:soul_sand",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:chiseled_sandstone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:cut_sandstone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:red_sandstone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:smooth_sandstone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:soul_soil",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:crimson_stem",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:mushroom_stem",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:warped_stem",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:chiseled_stone_bricks",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:cracked_stone_bricks",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:end_stone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:smooth_stone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:deepslate_tiles",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:chiseled_tuff",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:chiseled_tuff_bricks",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:polished_tuff",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:stripped_warped_hyphae",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:stripped_warped_stem",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:andesite",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:basalt",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:blackstone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:calcite",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:clay",
                 texture: "textures/blocks/stone.png",
                 name: "Stone"
             },
             {
                 id: "minecraft:cobblestone",
-                texture: "textures/blocks/cobblestone.png",
-                name: "Cobblestone"
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
             },
             {
-                id: "minecraft:dirt",
-                texture: "textures/blocks/dirt.png",
-                name: "Dirt"
+                id: "minecraft:deepslate",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
             },
             {
-                id: "minecraft:oak_planks",
-                texture: "textures/blocks/planks_oak.png",
-                name: "Oak Planks"
+                id: "minecraft:diorite",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
             },
             {
-                id: "minecraft:bricks",
-                texture: "textures/blocks/brick.png",
-                name: "Bricks"
+                id: "minecraft:granite",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:gravel",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:magma",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:mud",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:netherrack",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:obsidian",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:prismarine",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:sand",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:sandstone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:stone",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
+            },
+            {
+                id: "minecraft:tuff",
+                texture: "textures/blocks/stone.png",
+                name: "Stone"
             }
-            // ... etc
         ]
     },
     coloredBlocks: {

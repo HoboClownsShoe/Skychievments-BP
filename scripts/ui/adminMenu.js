@@ -7,6 +7,8 @@ import { CREATIVE_CATEGORIES } from '../config/categorizedItems.js'
 import { CollectionHelper } from '../utils/helpers.js';
 import { world } from '@minecraft/server';
 import { SystemManager } from '../utils/systemManager.js';
+import { ChestFormData } from '../extensions/forms.js';
+import { loadTestCollections } from '../config/testData.js'
 
 
 export class AdminMenu {
@@ -20,7 +22,7 @@ export class AdminMenu {
             const collections = CollectionManager.getCollections();
             const enabledCount = collections.filter(c => c.enabled).length;
             const debugStatus = Logger.isDebugEnabled() ? '§qEnabled' : '§cDisabled';
-            
+        
             const menu = new ActionFormData()
                 .title("Admin")
                 .body(
@@ -343,7 +345,7 @@ export class AdminMenu {
                 parentId: selectedGroup.id,
                 displayName,
                 description,
-                icon: selectedGroup.icon,
+                icon: selectedGroup.icon, //icon for the new collection
                 requirements,
                 rewards,
                 enabled: true,
@@ -556,7 +558,7 @@ export class AdminMenu {
                 const categoryForm = new ActionFormData()
                     .title(title)
                     .body("§7Choose a category of items:\n");
-
+    
                 Object.entries(CREATIVE_CATEGORIES).forEach(([_, category]) => {
                     categoryForm.button(
                         `${category.name}\n§8${category.description}`,
@@ -564,62 +566,74 @@ export class AdminMenu {
                     );
                 });
                 categoryForm.button("Cancel\n§8Return to previous menu");
-
+    
                 const categoryResponse = await categoryForm.show(player);
                 if (categoryResponse.canceled || categoryResponse.selection === Object.keys(CREATIVE_CATEGORIES).length) {
                     Logger.log("Creative selector cancelled at category selection", "DEBUG", "ADMIN_UI");
                     return null;
                 }
-
+    
                 // Get selected category
                 const currentCategory = Object.keys(CREATIVE_CATEGORIES)[categoryResponse.selection];
                 const category = CREATIVE_CATEGORIES[currentCategory];
                 Logger.log(`Category selected: ${category.name}`, "DEBUG", "ADMIN_UI");
-
-                // Show all items for selected category
-                const form = new ActionFormData()
-                    .title(`${category.name}`)
-                    .body(`§8Select an item or change category\n`);
-
-                // Add category switcher button
-                form.button(
-                    "Change Category\n§8Choose different category",
-                    "textures/ui/sidebar_buttons.png"
-                );
-
-                // Add all items
-                category.items.forEach(item => {
-                    form.button(
-                        `${item.name}\n§8${item.id}`,
-                        item.texture
-                    );
-                });
-
-                form.button("Cancel\n§8Return to category selection");
-
-                const response = await form.show(player);
-                if (response.canceled) {
-                    Logger.log("Creative selector cancelled at item selection", "DEBUG", "ADMIN_UI");
-                    return null;
-                }
-
-                // Handle category switcher
-                if (response.selection === 0) {
-                    Logger.log("Returning to category selection", "DEBUG", "ADMIN_UI");
-                    continue;
-                }
-
-                // Handle cancel button
-                if (response.selection === category.items.length + 1) {
-                    Logger.log("Returning to category selection via cancel", "DEBUG", "ADMIN_UI");
-                    continue;
-                }
-
-                // Handle item selection
-                if (response.selection <= category.items.length) {
-                    const selectedItem = category.items[response.selection - 1];
-                    Logger.log(`Item selected: ${selectedItem.id}`, "DEBUG", "ADMIN_UI");
-                    return selectedItem.id;
+    
+                // Pagination variables
+                const ITEMS_PER_PAGE = 45;
+                let currentPage = 0;
+                const totalPages = Math.ceil(category.items.length / ITEMS_PER_PAGE);
+    
+                while (true) {
+                    const startIndex = currentPage * ITEMS_PER_PAGE;
+                    const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, category.items.length);
+                    const currentItems = category.items.slice(startIndex, endIndex);
+    
+                    const cfd = new ChestFormData('54')
+                        .title(`Item Selector - Page ${currentPage + 1}/${totalPages}`)
+                        .button(0, '§l§4Back', ['', '§r§cGo back to categories!'], 'textures/ui/arrow_l_default')
+                        .button(8, '§l§4Cancel', ['', '§r§cCancel!'], 'textures/ui/cancel');
+    
+                    // Add pagination buttons if needed
+                    if (currentPage > 0) {
+                        cfd.button(3, '§l§ePrevious Page', ['', `§r§ePage ${currentPage}/${totalPages}`], 'textures/ui/arrow_left');
+                    }
+                    if (currentPage < totalPages - 1) {
+                        cfd.button(5, '§l§eNext Page', ['', `§r§ePage ${currentPage + 2}/${totalPages}`], 'textures/ui/arrow_right');
+                    }
+    
+                    // Add items for current page
+                    let i = 9;
+                    currentItems.forEach(item => {
+                        cfd.button(i, item.id, [], item.id, 1);
+                        i++;
+                    });
+    
+                    const response = await cfd.show(player);
+                    
+                    // Handle navigation buttons
+                    if (response.selection === 0) {
+                        Logger.log("Returning to category selection", "DEBUG", "ADMIN_UI");
+                        break;
+                    }
+                    if (response.selection === 8) {
+                        Logger.log("Cancelled item selection", "DEBUG", "ADMIN_UI");
+                        break;
+                    }
+                    if (response.selection === 3 && currentPage > 0) {
+                        currentPage--;
+                        continue;
+                    }
+                    if (response.selection === 5 && currentPage < totalPages - 1) {
+                        currentPage++;
+                        continue;
+                    }
+    
+                    // Handle item selection
+                    if (response.selection >= 9 && response.selection < 9 + currentItems.length) {
+                        const selectedItem = currentItems[response.selection - 9];
+                        Logger.log(`Item selected: ${selectedItem.id}`, "DEBUG", "ADMIN_UI");
+                        return selectedItem.id;
+                    }
                 }
             }
         } catch (error) {
@@ -686,25 +700,33 @@ export class AdminMenu {
                     "§7- Adds any new hardcoded collections\n" +
                     "§7- Preserves existing collections\n" +
                     "§7- Keeps player progress\n\n" +
+                    "§eLoad Test Data:\n" +
+                    "§7- Loads 100 test collections\n" +
+                    "§7- Spreads across all groups\n" +
+                    "§7- Various requirements and rewards\n\n" +
                     "§eWarning: Choose these options carefully!"
                 )
                 .button("§cFull Reset\n§8Development only")
                 .button("§6Load New Collections\n§8Add new defaults")
+                .button("§eLoad Test Data\n§8Add test collections")
                 .button("Back\n§8Return to menu");
-
+    
             const response = await menu.show(player);
             
             if (response.canceled) {
                 await this.showMainMenu(player);
                 return;
             }
-
+    
             switch (response.selection) {
                 case 0:
                     await this.showFullResetConfirmation(player);
                     break;
                 case 1:
                     await this.showLoadNewConfirmation(player);
+                    break;
+                case 2:
+                    await this.showLoadTestDataConfirmation(player);
                     break;
                 default:
                     await this.showMainMenu(player);
@@ -807,6 +829,55 @@ export class AdminMenu {
         } catch (error) {
             Logger.log(`Error during system reload: ${error}`, "ERROR", "ADMIN_UI");
             player.sendMessage('§c§lAn error occurred during system reload.');
+            await this.showSystemManagement(player);
+        }
+    }
+
+    static async showLoadTestDataConfirmation(player) {
+        try {
+            const form = new MessageFormData()
+                .title("§e§lLoad Test Data")
+                .body(
+                    "§6This will:\n\n" +
+                    "§7- Create a new 'Test' group if it doesn't exist\n" +
+                    "§7- Generate 100 random test collections\n" +
+                    "§7- Include random items from all available blocks\n" +
+                    "§7- Random requirements (1-3 items each)\n" +
+                    "§7- Random rewards including:\n" +
+                    "  §7• Random items (1-32 each)\n" +
+                    "  §7• Random enchantments\n" +
+                    "  §7• Various effect commands\n\n" +
+                    "§eExisting test collections will be replaced!\n" +
+                    "§6Are you sure you want to proceed?"
+                )
+                .button1("§e§lLoad Test Data")
+                .button2("§qCancel");
+    
+            const response = await form.show(player);
+            
+            if (!response.canceled && response.selection === 0) {
+                player.sendMessage("§6§lGenerating and loading test collections...");
+                
+                const result = await loadTestCollections();
+                
+                if (result.success) {
+                    Logger.log(`Test collections loaded: ${JSON.stringify(result)}`, "DEBUG", "ADMIN_UI");
+                    player.sendMessage(
+                        `§a§lTest Collections Loaded!\n` +
+                        `§7Total Collections: ${result.totalCollections}\n` +
+                        `§7Enabled: ${result.enabledCollections}\n` +
+                        `§7Requirements per collection: ${result.requirements.min}-${result.requirements.max}\n` +
+                        `§7Rewards per collection: ${result.rewards.min}-${result.rewards.max}`
+                    );
+                } else {
+                    player.sendMessage("§c§lFailed to load test collections! Check logs for details.");
+                }
+            }
+    
+            await this.showSystemManagement(player);
+        } catch (error) {
+            Logger.log(`Error loading test data: ${error}`, "ERROR", "ADMIN_UI");
+            player.sendMessage('§c§lAn error occurred while loading test data.');
             await this.showSystemManagement(player);
         }
     }

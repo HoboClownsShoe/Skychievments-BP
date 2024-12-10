@@ -9,6 +9,7 @@ import { Permissions } from './utils/permissions';
 import { CollectionGroupManager } from './config/collectionGroups';
 import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
 import { showTipToast } from './utils/toast.js'
+import { ChestFormData } from './extensions/forms.js';
 
 world.afterEvents.worldInitialize.subscribe(async () => {
     try {
@@ -78,12 +79,12 @@ world.afterEvents.itemUse.subscribe((event) => {
         .button("button2")
         .button("button3", "textures/ui/mining_icon.png");
 
-        const mfd = new MessageFormData()
-        .title("MessageFormData")
-        .body("erm......")
-        .button1("Confirm")
-        .button2("Cancel")
-
+        const mfd = new ChestFormData('54')
+        .title('Testing')
+        .button(6, 'Button Name', ['Lore'], 'minecraft:oak_log', 1 )
+        .button(53, 'Testing', ['Lore Lore'], 'minecraft:diamond', 1)
+        .button(14, 'Testing', ['Lore Lore'], 'minecraft:jungle_pressure_plate', 1);
+        
 
         switch (itemStack.typeId) {
             case 'skyblock:skychievments_admin':
@@ -100,7 +101,7 @@ world.afterEvents.itemUse.subscribe((event) => {
 
             case "minecraft:compass": 
                 showTipToast(player, 'Hello');
-                //mfd.show(player); 
+                mfd.show(player); 
                 break;
 
         }

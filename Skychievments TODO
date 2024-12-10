@@ -25,15 +25,20 @@ collectionDetails form too big
 
 
 
+
 Skychievments features to add
+
+Instructions on how to use
 
 on player inital spawn give playerMenu(QuestBook) item
 
-Killer quest type
-Breeder questType
-Eater questtype
-Rider questType
-Tamer questType
+
+QuestTypes :
+    Killer
+    Breeder
+    Eater
+    Rider
+    Tamer
 
 
 
