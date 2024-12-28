@@ -723,7 +723,7 @@ export class AdminMenu {
                     await this.showFullResetConfirmation(player);
                     break;
                 case 1:
-                    await this.showLoadNewConfirmation(player);
+                    await this.showReloadConfirmation(player);
                     break;
                 case 2:
                     await this.showLoadTestDataConfirmation(player);

@@ -1,13 +1,181 @@
 // scripts/ui/playerMenu.js
 import { ActionFormData, MessageFormData } from '@minecraft/server-ui';
-import { CollectionManager } from '../config/collections.js';
+import { CollectionStorage } from '../utils/collectionStorage.js';
 import { CollectionHandler } from '../handlers/collectionHandler.js';
 import { CollectionGroupManager } from '../config/collectionGroups.js';
 import { Logger } from '../utils/logger.js';
-
+import { world } from "@minecraft/server";
+import { KillTracker } from "detectors/killTracker.js"
 
 export class PlayerMenu {
     static async showMainMenu(player) {
+        try {
+            const menu = new ActionFormData()
+                .title("Skychievments")
+                .body("§7Select a category to view:\n")
+                .button("Quests", "textures/ui/groupIcons/quest_book.png")
+                .button("Stats", "textures/ui/groupIcons/stats_icon.png");
+
+            const response = await menu.show(player);
+            
+            if (!response.canceled) {
+                switch(response.selection) {
+                    case 0:
+                        await this.showCollectionsMenu(player);
+                        break;
+                    case 1:
+                        await this.showStatsMenu(player);
+                        break;
+                }
+            }
+        } catch (error) {
+            Logger.log(`Error in main menu: ${error}`, "ERROR", "PLAYER_UI");
+            player.sendMessage('§cAn error occurred while opening the menu.');
+        }
+    }
+
+    static async showStatsMenu(player) {
+        try {
+            const menu = new ActionFormData()
+                .title("Statistics")
+                .body("§7View your gameplay statistics:\n")
+                .button("Mob Kills\n§8Track your monster hunts", "textures/ui/sword.png")
+                .button("Items Collected\n§8View item collection stats", "textures/ui/inventory_icon.png")
+                .button("Player Stats\n§8General gameplay statistics", "textures/ui/player.png")
+                .button("Back to Menu", "textures/ui/arrow_dark_left_stretch.png");
+
+            const response = await menu.show(player);
+            
+            if (!response.canceled) {
+                switch(response.selection) {
+                    case 0:
+                        await this.showMobKillStats(player);
+                        break;
+                    case 1:
+                        await this.showItemStats(player);
+                        break;
+                    case 2:
+                        await this.showPlayerStats(player);
+                        break;
+                    case 3:
+                        await this.showMainMenu(player);
+                        break;
+                }
+            }
+        } catch (error) {
+            Logger.log(`Error in stats menu: ${error}`, "ERROR", "PLAYER_UI");
+            player.sendMessage('§cAn error occurred while showing statistics.');
+        }
+    }
+    
+
+    static async showMobKillStats(player) {
+        try {
+            // Get kill stats from storage
+            const propertyKey = 'kills_' + player.id;
+            const killStats = world.getDynamicProperty(propertyKey) || '';
+            
+            // Parse kill stats
+            const stats = {};
+            killStats.split(',').forEach(stat => {
+                if (!stat) return;
+                const [code, count] = stat.split(':');
+                if (code && count) {
+                    stats[code] = parseInt(count);
+                }
+            });
+
+            // Format the kill statistics
+            let statsText = '';
+            let totalKills = 0;
+
+            // Convert stats to array for sorting
+            const sortedStats = Object.entries(stats)
+                .map(([code, count]) => ({
+                    code,
+                    count,
+                    name: KillTracker.getFullMobType(code)?.replace('minecraft:', '').split('_').map(
+                        word => word.charAt(0).toUpperCase() + word.slice(1)
+                    ).join(' ')
+                }))
+                .filter(stat => stat.name) // Filter out any unknown mob types
+                .sort((a, b) => b.count - a.count); // Sort by kill count descending
+
+            // Calculate total kills and create display text
+            totalKills = sortedStats.reduce((sum, stat) => sum + stat.count, 0);
+
+            if (sortedStats.length > 0) {
+                statsText = sortedStats
+                    .map(stat => `§7${stat.name}: §f${stat.count}`)
+                    .join('\n');
+            } else {
+                statsText = '§7No mobs killed yet.';
+            }
+
+            const menu = new ActionFormData()
+                .title("Mob Kill Statistics")
+                .body(
+                    `§7Your total mob kills: §f${totalKills}\n\n` +
+                    `§lKill Counts:\n` +
+                    statsText
+                )
+                .button("Back to Stats Menu", "textures/ui/arrow_dark_left_stretch.png");
+
+            const response = await menu.show(player);
+            
+            if (!response.canceled) {
+                await this.showStatsMenu(player);
+            }
+        } catch (error) {
+            Logger.log(`Error showing mob kill stats: ${error}`, "ERROR", "PLAYER_UI");
+            player.sendMessage('§cAn error occurred while showing kill statistics.');
+        }
+    }
+
+    static async showItemStats(player) {
+        try {
+            const menu = new ActionFormData()
+                .title("Item Statistics")
+                .body(
+                    "nothing to see here....."
+                )
+                .button("Back to Stats Menu", "textures/ui/arrow_dark_left_stretch.png");
+
+            const response = await menu.show(player);
+            
+            if (!response.canceled) {
+                await this.showStatsMenu(player);
+            }
+        } catch (error) {
+            Logger.log(`Error showing item stats: ${error}`, "ERROR", "PLAYER_UI");
+            player.sendMessage('§cAn error occurred while showing item statistics.');
+        }
+
+    }
+
+    static async showPlayerStats(player) {
+        try {
+            const menu = new ActionFormData()
+                .title("Player Statistics")
+                .body(
+                    "nothing to see here....."
+                )
+                .button("Back to Stats Menu", "textures/ui/arrow_dark_left_stretch.png");
+
+            const response = await menu.show(player);
+            
+            if (!response.canceled) {
+                await this.showStatsMenu(player);
+            }
+        } catch (error) {
+            Logger.log(`Error showing player stats: ${error}`, "ERROR", "PLAYER_UI");
+            player.sendMessage('§cAn error occurred while showing player statistics.');
+        }
+
+    }
+
+
+    static async showCollectionsMenu(player) {
         try {
             // Get active groups and completed collections
             const activeGroups = await CollectionGroupManager.getActiveGroupsForPlayer(player);
@@ -27,19 +195,23 @@ export class PlayerMenu {
                 menu.button("Completed Quests", "textures/ui/check.png");
             }
 
+            menu.button("Back to Menu", "textures/ui/arrow_dark_left_stretch.png");
+
             const response = await menu.show(player);
             
             if (!response.canceled) {
                 if (response.selection < activeGroups.length) {
-                    // Selected a group
                     await this.showGroupCollections(player, activeGroups[response.selection]);
                 } else if (completedCollections.length > 0 && response.selection === activeGroups.length) {
-                    // Selected completed collections
                     await this.showCompletedCollections(player);
+                }
+                else {
+                    await this.showMainMenu(player);
                 }
             }
         } catch (error) {
             Logger.log(`Error in player main menu: ${error}`, "ERROR", "PLAYER_UI");
+            player.sendMessage('§cAn error occurred while opening the menu.');
         }
     }
 
@@ -60,8 +232,9 @@ export class PlayerMenu {
             // Get all collection data for this group in one check
             const { claimableCollections, progress } = await CollectionHandler.checkGroupProgress(player, group.id);
             
-            const allCollections = CollectionManager.getEnabledCollections()
-                .filter(c => c.parentId === group.id)
+            // Get collections using new storage system
+            const allCollections = CollectionStorage.getCollectionsByGroup(group.id)
+                .filter(c => c.enabled)
                 .sort((a, b) => a.order - b.order);
 
             // Create lookup map for claimable collections
@@ -74,13 +247,13 @@ export class PlayerMenu {
             const completedCollections = allCollections.filter(c => progress[c.id]?.completed);
 
             // Build the body text
-            let completedText = completedCollections.length > 0 ? 
+            const completedText = completedCollections.length > 0 ? 
                 "\n§2§lCompleted:§r\n" + completedCollections
                     .map(c => `§7- ${c.displayName}`)
                     .join('\n') + '\n' : '';
 
             const menu = new ActionFormData()
-                .title(`§p§r§e§f§i§x§r${group.displayName}`)
+            .title(`§p§r§e§f§i§x§r${group.displayName}`)
                 .body(`${group.description}${completedText}\n`);
 
             // Add uncompleted collections as buttons
@@ -88,17 +261,18 @@ export class PlayerMenu {
                 uncompletedCollections.forEach(collection => {
                     const collectionProgress = progress[collection.id];
                     const claimableData = claimableMap.get(collection.id);
-                    let progressText = '';
-
+                    
                     // Build progress text for each requirement
-                    collection.requirements.forEach((req, index) => {
-                        const current = collectionProgress?.requirements[index]?.amount || 0;
-                        progressText += `\n${claimableData ? '§2' : '§6'}${current}/${req.amount} ${req.itemId.split(':')[1]}`;
-                    });
+                    const progressText = collection.requirements
+                        .map((req, index) => {
+                            const current = collectionProgress?.requirements[index]?.amount || 0;
+                            return `\n${claimableData ? '§2' : '§6'}${current}/${req.amount} ${req.itemId.split(':')[1]}`;
+                        })
+                        .join('');
 
                     menu.button(
-                      //  `${collection.displayName}${claimableData ? '\n§q(Claim It!)' : ''}`, collection.icon
-                        `${claimableData ? '§q[*] ' : ''}${collection.displayName}`, collection.icon
+                        `${claimableData ? '§q[*] ' : ''}${collection.displayName}`,
+                        collection.icon
                     );
                 });
             } else {
@@ -114,7 +288,7 @@ export class PlayerMenu {
             const lastButtonIndex = uncompletedCollections.length > 0 ? uncompletedCollections.length : 1;
 
             if (response.selection === lastButtonIndex) {
-                await this.showMainMenu(player);
+                await this.showCollectionsMenu(player);
                 return;
             }
 
@@ -126,6 +300,7 @@ export class PlayerMenu {
 
         } catch (error) {
             Logger.log(`Error showing group collections: ${error}`, "ERROR", "PLAYER_UI");
+            player.sendMessage('§cAn error occurred while showing collections.');
         }
     }
 
@@ -146,7 +321,7 @@ export class PlayerMenu {
                 .title(collection.displayName)
                 .body(
                     `${collection.description}\n\n` +
-                    `§7Requirements:${requirementsText}\n\n` +
+                    `§7Requirements:\n${requirementsText}\n\n` +
                     `§7Rewards:\n${rewardsText}`
                 );
 
@@ -173,7 +348,7 @@ export class PlayerMenu {
                     await this.showGroupCollections(player, group);
                 } else {
                     Logger.log(`Group not found for collection ${collection.id}`, "ERROR", "PLAYER_UI");
-                    await this.showMainMenu(player);
+                    await this.showCollectionsMenu(player);
                 }
             }
         } catch (error) {
@@ -182,7 +357,6 @@ export class PlayerMenu {
         }
     }
 
-    // Enhanced completed collections viewer for PlayerMenu
     static async showCompletedCollections(player) {
         try {
             // Get all completed collections data
@@ -193,14 +367,13 @@ export class PlayerMenu {
                 return;
             }
 
-            // Get all collection data and organize by groups
-            const allCollections = CollectionManager.getCollections();
+            // Get all collections from storage and organize by groups
             const groupedCollections = new Map();
 
             // Sort and group completed collections by their parent groups
-            completedCollections.forEach(completed => {
-                const collection = allCollections.find(c => c.id === completed.id);
-                if (!collection) return;
+            for (const completed of completedCollections) {
+                const collection = CollectionStorage.getCollection(completed.id);
+                if (!collection) continue;
 
                 if (!groupedCollections.has(collection.parentId)) {
                     groupedCollections.set(collection.parentId, []);
@@ -209,14 +382,14 @@ export class PlayerMenu {
                     ...collection,
                     completedAt: completed.completedAt
                 });
-            });
+            }
 
             // Create menu with group selection
             const menu = new ActionFormData()
                 .title("Completed Collections")
                 .body(`§7Your completed collections:\n`);
 
-            // Add each group that has completed collections
+            // Process groups with completions
             const groupsWithCompletions = [];
             for (const [groupId, collections] of groupedCollections) {
                 const group = CollectionGroupManager.getGroupById(groupId);
@@ -232,21 +405,16 @@ export class PlayerMenu {
             groupsWithCompletions.sort((a, b) => a.group.order - b.group.order);
 
             // Add menu buttons for each group
-            groupsWithCompletions.forEach(({ group, collections }) => {
-                menu.button(
-                    `${group.displayName}`,
-                    group.icon
-                );
+            groupsWithCompletions.forEach(({ group }) => {
+                menu.button(group.displayName, group.icon);
             });
 
-            // Add back button
             menu.button("Back to Menu", "textures/ui/arrow_dark_left_stretch.png");
 
             const response = await menu.show(player);
 
             if (!response.canceled) {
                 if (response.selection < groupsWithCompletions.length) {
-                    // Show collections for selected group
                     const selectedGroup = groupsWithCompletions[response.selection];
                     await this.showCompletedGroupDetails(
                         player,
@@ -254,8 +422,7 @@ export class PlayerMenu {
                         selectedGroup.collections
                     );
                 } else {
-                    // Return to main menu
-                    await this.showMainMenu(player);
+                    await this.showCollectionsMenu(player);
                 }
             }
 
@@ -268,32 +435,28 @@ export class PlayerMenu {
     static async showCompletedGroupDetails(player, group, completedCollections) {
         try {
             const menu = new ActionFormData()
-                .title(`${group.displayName}`)
+                .title(group.displayName)
                 .body(`§7View your completed achievements:\n`);
 
             // Sort collections by completion date, newest first
             const sortedCollections = completedCollections
                 .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
 
-            // Add each collection as a button
             sortedCollections.forEach(collection => {
-                menu.button(
-                    `${collection.displayName}`,
-                    collection.icon
-                );
+                menu.button(collection.displayName, collection.icon);
             });
 
-            // Add back button
             menu.button("Back to Categories", "textures/ui/arrow_dark_left_stretch.png");
 
             const response = await menu.show(player);
 
             if (!response.canceled) {
                 if (response.selection < sortedCollections.length) {
-                    // Show details for selected collection
-                    await this.showCompletedCollectionDetails(player, sortedCollections[response.selection]);
+                    await this.showCompletedCollectionDetails(
+                        player,
+                        sortedCollections[response.selection]
+                    );
                 } else {
-                    // Return to completed collections menu
                     await this.showCompletedCollections(player);
                 }
             }
@@ -306,7 +469,6 @@ export class PlayerMenu {
 
     static async showCompletedCollectionDetails(player, collection) {
         try {
-            // Format collection requirements and rewards for display
             const requirementsText = collection.requirements
                 .map(req => `§7- ${req.amount}x ${req.itemId.split(':')[1]}`)
                 .join('\n');
@@ -315,7 +477,6 @@ export class PlayerMenu {
                 .map(r => `§7- ${r.displayText}`)
                 .join('\n');
 
-            // Create detailed view menu
             const menu = new ActionFormData()
                 .title(collection.displayName)
                 .body(
@@ -329,39 +490,21 @@ export class PlayerMenu {
             const response = await menu.show(player);
 
             if (!response.canceled) {
-                // Return to group details
                 await this.showCompletedGroupDetails(
                     player,
                     CollectionGroupManager.getGroupById(collection.parentId),
                     (await CollectionHandler.getCompletedCollections(player))
-                        .map(c => ({
-                            ...CollectionManager.getCollections().find(col => col.id === c.id),
-                            completedAt: c.completedAt
-                        }))
-                        .filter(c => c.parentId === collection.parentId)
+                        .map(c => {
+                            const col = CollectionStorage.getCollection(c.id);
+                            return col ? { ...col, completedAt: c.completedAt } : null;
+                        })
+                        .filter(c => c && c.parentId === collection.parentId)
                 );
             }
 
         } catch (error) {
             Logger.log(`Error showing completed collection details: ${error}`, "ERROR", "PLAYER_UI");
             await this.showCompletedCollections(player);
-        }
-    }
-
-    // Helper method to get formatted space information for a group
-    static async #getGroupSpaceInfo(groupId) {
-        try {
-            const stats = await CollectionManager.getStorageStats(groupId);
-            if (!stats || !stats[groupId]) return "§cUnable to get space info";
-
-            const usedKB = (stats[groupId].usedSpace / 1024).toFixed(1);
-            const totalKB = 32;
-            const percent = stats[groupId].spaceUsedPercent;
-
-            return `§7${usedKB}KB/${totalKB}KB (${percent}% used)`;
-        } catch (error) {
-            Logger.log(`Error getting group space info: ${error}`, "ERROR", "PLAYER_UI");
-            return "§cUnable to get space info";
         }
     }
 }

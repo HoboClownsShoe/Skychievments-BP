@@ -1,6 +1,7 @@
 // scripts/handlers/collectionHandler.js
 import { world } from '@minecraft/server';
 import { CollectionManager } from '../config/collections.js';
+import { CollectionStorage } from '../utils/collectionStorage.js';
 import { CollectionGroupManager } from '../config/collectionGroups.js';
 import { Logger } from '../utils/logger.js';
 
@@ -15,11 +16,9 @@ export class CollectionHandler {
                 return { claimableCollections: [], progress: {} };
             }
 
-            Logger.log(`Checking ${player.name}'s progress for group ${groupId}`, "DEBUG", "COLLECTIONS");
-            
-            // Get all collections for this group
-            const collections = CollectionManager.getEnabledCollections()
-                .filter(c => c.parentId === groupId);
+            // Get all collections for this group using new storage
+            const collections = CollectionStorage.getCollectionsByGroup(groupId)
+                .filter(c => c.enabled);
 
             if (collections.length === 0) {
                 Logger.log(`No collections found for group ${groupId}`, "DEBUG", "COLLECTIONS");
