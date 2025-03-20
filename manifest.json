@@ -1,10 +1,10 @@
 {
     "format_version": 2,
     "header": {
-      "name": "Skychievements",
+      "name": "Skychievements BP 0.3.0",
       "description": "Skychievments Behaviour Pack",
-      "uuid": "6d933c82-3521-4ed2-9978-442f7aa2ece4",
-      "version": [1, 0, 0],
+      "uuid": "19733f45-2226-4a0b-ba1b-776ee53c5cfd",
+      "version": [0, 3, 0],
       "min_engine_version": [1, 20, 0]
     },
     "modules": [
@@ -24,11 +24,15 @@
     "dependencies": [
       {
         "module_name": "@minecraft/server",
-        "version": "1.15.0"
+        "version": "1.18.0-beta"
       },
       {
         "module_name": "@minecraft/server-ui",
-        "version": "1.2.0"
+        "version": "1.3.0"
+      },
+      {
+        "module_name": "@minecraft/server-gametest",
+        "version": "1.0.0-beta"
       }
     ]
   }

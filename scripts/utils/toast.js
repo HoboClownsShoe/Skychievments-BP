@@ -1,5 +1,6 @@
 
 import { GameMode } from "@minecraft/server";
+import { system } from "@minecraft/server";
 
 /**
  * 
@@ -36,21 +37,24 @@ const types = {
  */
 export function showAchievementToast(player, id, type, icon, tag, slideshow, xpReward) {
   if (!player.isValid()) return;
-  if (player.hasTag(tag)) return;
 
-  if (player.matches({ gameMode: GameMode.creative })) {
-    if (player.hasTag('has_shown_creative_warning')) return;
+  //if (player.hasTag(tag)) return;
 
-    showTipToast(player, 'creative_toast_hidden');
-    player.addTag('has_shown_creative_warning');
-    return;
-  }
+  // if (player.matches({ gameMode: GameMode.creative })) {
+  //   if (player.hasTag('has_shown_creative_warning')) return;
+
+  //   showTipToast(player, 'creative_toast_hidden');
+  //   player.addTag('has_shown_creative_warning');
+  //   return;
+  // }
 
   const typeSet = types[type];
   if (typeSet == undefined) return;
 
   if (slideshow == undefined || !slideshow) {
+    //toast message
     player.sendMessage(`_r4ui:toast_0.header.${typeSet[0]}.body.${id}.slideshow_0.${icon}`);
+    //console.log(`_r4ui:toast_0.header.${typeSet[0]}.body.${id}.slideshow_0.${icon}`);
   } else {
     player.sendMessage(`_r4ui:toast_0.header.${typeSet[0]}.body.${id}.slideshow_1.${icon}`);
   }
@@ -58,7 +62,7 @@ export function showAchievementToast(player, id, type, icon, tag, slideshow, xpR
   if (xpReward != undefined) {
     player.addExperience(xpReward);
   }
-
+  // chat text
   player.runCommand(`tellraw @a {"rawtext":[{"translate":"${typeSet[1]}","with":{"rawtext":[{"selector":"@s"},{"translate":"r4ui.toast.body.${id}"}]}}]}`);
   player.playSound('ui.toast.woosh');
   if (type == 'challenge') player.playSound('ui.toast.challenge_complete');
@@ -84,4 +88,26 @@ export function showTipToast(player, id) {
 
   player.sendMessage(`_r4ui:toast_1.tip.${id}`);
   player.playSound('ui.toast.woosh');
+}
+
+
+export function showToast(player, msg) {
+  if (!player.isValid()) return;
+
+  player.sendMessage(msg);
+  player.playSound('ui.toast.woosh');
+}
+
+export function sendNotification(player, message, icon, playSound) {
+    if (playSound === undefined || playSound)
+        player.playSound("random.toast_recipe_unlocking_in");
+    player.onScreenDisplay.setTitle(`notification.${message}`, { subtitle: `notification.${icon}`, fadeInDuration: 0, fadeOutDuration: 0, stayDuration: 1 });
+
+    player.runCommand(`tellraw @p {"rawtext":[{"text":"${message}"}]}`);
+
+    if (playSound === undefined || playSound)
+        system.runTimeout(() => {
+            if (player && player.isValid())
+                player.playSound("random.toast_recipe_unlocking_out");
+        }, 108);
 }

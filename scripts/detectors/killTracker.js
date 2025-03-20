@@ -1,78 +1,15 @@
 import { world } from "@minecraft/server";
 import { Logger } from "../utils/logger";
+import { MOBLIST } from "../config/mobsList";
 
 class KillTracker {
-    // Mapping of full mob IDs to shorthand codes
-    static #mobCodes = {
-        // Hostile Mobs
-        'minecraft:blaze': 'bz',
-        'minecraft:creeper': 'cr',
-        'minecraft:drowned': 'dr',
-        'minecraft:elder_guardian': 'eg',
-        'minecraft:enderman': 'en',
-        'minecraft:endermite': 'em',
-        'minecraft:ender_dragon': 'ed',
-        'minecraft:evoker': 'ev',
-        'minecraft:ghast': 'gh',
-        'minecraft:guardian': 'gd',
-        'minecraft:hoglin': 'hg',
-        'minecraft:husk': 'hu',
-        'minecraft:magma_cube': 'mc',
-        'minecraft:phantom': 'ph',
-        'minecraft:piglin': 'pg',
-        'minecraft:piglin_brute': 'pb',
-        'minecraft:pillager': 'pl',
-        'minecraft:ravager': 'rv',
-        'minecraft:shulker': 'sh',
-        'minecraft:silverfish': 'sf',
-        'minecraft:skeleton': 'sk',
-        'minecraft:slime': 'sl',
-        'minecraft:spider': 'sp',
-        'minecraft:stray': 'st',
-        'minecraft:vex': 'vx',
-        'minecraft:vindicator': 'vd',
-        'minecraft:witch': 'wt',
-        'minecraft:wither': 'wr',
-        'minecraft:wither_skeleton': 'ws',
-        'minecraft:zoglin': 'zg',
-        'minecraft:zombie': 'zm',
-        'minecraft:zombie_villager': 'zv',
-        'minecraft:zombified_piglin': 'zp',
-
-        // Passive Mobs
-        'minecraft:axolotl': 'ax',
-        'minecraft:bat': 'bt',
-        'minecraft:bee': 'be',
-        'minecraft:cat': 'ct',
-        'minecraft:chicken': 'ch',
-        'minecraft:cod': 'cd',
-        'minecraft:cow': 'cw',
-        'minecraft:dolphin': 'dp',
-        'minecraft:donkey': 'dk',
-        'minecraft:fox': 'fx',
-        'minecraft:frog': 'fr',
-        'minecraft:goat': 'gt',
-        'minecraft:horse': 'hr',
-        'minecraft:llama': 'll',
-        'minecraft:mooshroom': 'mr',
-        'minecraft:mule': 'ml',
-        'minecraft:ocelot': 'oc',
-        'minecraft:panda': 'pd',
-        'minecraft:parrot': 'pt',
-        'minecraft:pig': 'pi',
-        'minecraft:polar_bear': 'pb',
-        'minecraft:pufferfish': 'pf',
-        'minecraft:rabbit': 'rb',
-        'minecraft:salmon': 'sm',
-        'minecraft:sheep': 'sh',
-        'minecraft:squid': 'sq',
-        'minecraft:strider': 'sr',
-        'minecraft:tropical_fish': 'tf',
-        'minecraft:turtle': 'tu',
-        'minecraft:villager': 'vl',
-        'minecraft:wandering_trader': 'wt',
-        'minecraft:wolf': 'wf'
-    };
+    // Create mobCodes mapping from MOBLIST
+    static #mobCodes = Object.values(MOBLIST)
+        .flatMap(category => category.items)
+        .reduce((codes, item) => {
+            codes[item.id] = item.mobcode;
+            return codes;
+        }, {});
 
     static #KILL_STATS_PREFIX = 'kills_';
 
@@ -154,6 +91,5 @@ class KillTracker {
             .find(([_, code]) => code === mobCode)?.[0] || null;
     }
 }
-
 
 export { KillTracker };

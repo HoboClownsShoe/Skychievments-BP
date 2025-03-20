@@ -1,7 +1,7 @@
 import { AVAILABLE_BLOCKS } from './categorizedItems.js';
-import { COLLECTION_GROUPS, CollectionGroupManager } from './collectionGroups.js';
+import { COLLECTION_GROUPS } from './collectionGroups.js';
 import { world } from '@minecraft/server';
-import { CollectionManager } from './collections.js';
+import { CollectionManager, CollectionStorage, CollectionHandler, CollectionGroupManager } from '../managers/collectionsManager';
 import { Logger } from '../utils/logger.js';
 
 

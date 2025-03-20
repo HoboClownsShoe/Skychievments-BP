@@ -1,9 +1,3 @@
-// scripts/config/collections.js
-import { world } from '@minecraft/server';
-import { Logger } from '../utils/logger.js';
-import { CollectionStorage } from '../utils/collectionStorage.js';
-import { COLLECTION_GROUPS, CollectionGroupManager } from './collectionGroups.js';
-
 export const DEFAULT_COLLECTIONS = {
     // Mining group collections
     "group_mining": [
@@ -14,7 +8,7 @@ export const DEFAULT_COLLECTIONS = {
             "description": "Your first stepping stone to success! Gather basic building materials.",
             "icon": "textures/ui/mining_icon.png",
             "requirements": [
-                {
+                { 
                     "itemId": "minecraft:cobblestone",
                     "amount": 64
                 }
@@ -240,7 +234,7 @@ export const DEFAULT_COLLECTIONS = {
     ],
 
     // Fishing group collections
-    "group_fishing": [
+    "xxx_group_fishing": [
         {
             "id": "fishing_starter_1",
             "parentId": "group_fishing",
@@ -272,127 +266,3 @@ export const DEFAULT_COLLECTIONS = {
         }
     ]
 };
-
-export class CollectionManager {
-    static async initialize() {
-        try {
-            // Initialize storage
-            CollectionStorage.initialize();
-
-            // Load default collections if needed
-            for (const [groupId, defaultCollections] of Object.entries(DEFAULT_COLLECTIONS)) {
-                for (const collection of defaultCollections) {
-                    const existingCollection = CollectionStorage.getCollection(collection.id);
-                    if (!existingCollection) {
-                        await CollectionStorage.saveCollection(collection);
-                    }
-                }
-            }
-
-            Logger.log("Collection storage initialized with defaults", "DEBUG", "COLLECTION_MANAGER");
-            return true;
-        } catch (error) {
-            Logger.log(`Failed to initialize collection storage: ${error}`, "ERROR", "COLLECTION_MANAGER");
-            return false;
-        }
-    }
-
-    // Basic CRUD operations
-    static getCollections() {
-        return CollectionStorage.getAllCollections();
-    }
-
-    static getCollectionById(id) {
-        return CollectionStorage.getCollection(id);
-    }
-
-    static getCollectionsByGroup(groupId) {
-        return CollectionStorage.getCollectionsByGroup(groupId);
-    }
-
-    static getEnabledCollections() {
-        return this.getCollections().filter(c => c.enabled);
-    }
-
-    static async addCollection(collection) {
-        return await CollectionStorage.saveCollection(collection);
-    }
-
-    static async updateCollection(collection) {
-        return await CollectionStorage.saveCollection(collection);
-    }
-
-    static async deleteCollection(id) {
-        return await CollectionStorage.deleteCollection(id);
-    }
-
-    static async toggleCollection(id, enabled) {
-        const collection = this.getCollectionById(id);
-        if (!collection) return false;
-
-        collection.enabled = enabled;
-        return await this.updateCollection(collection);
-    }
-
-    static getStorageStats() {
-        return CollectionStorage.getStorageStats();
-    }
-
-    static formatStorageStats(stats) {
-        if (!stats) return "§cNo storage statistics available";
-        
-        return (
-            `§7Total Collections: §f${stats.totalCollections}\n` +
-            `§7Enabled: §f${stats.enabledCollections}\n\n` +
-            `§7By Group:\n` +
-            Object.entries(stats.byGroup)
-                .map(([groupId, groupStats]) => 
-                    `§7${groupId}: §f${groupStats.enabled}/${groupStats.total} enabled`
-                )
-                .join('\n')
-        );
-    }
-
-    // Helper methods for default collections
-    static getDefaultCollectionsForGroup(groupId) {
-        return DEFAULT_COLLECTIONS[groupId] || [];
-    }
-
-    static validateDefaultCollections() {
-        let isValid = true;
-        const errors = [];
-    
-        for (const [groupId, collections] of Object.entries(DEFAULT_COLLECTIONS)) {
-            collections.forEach(collection => {
-                if (!collection.id || !collection.parentId || !collection.displayName) {
-                    errors.push(`Invalid collection in group ${groupId}: Missing required fields`);
-                    isValid = false;
-                }
-    
-                if (collection.parentId !== groupId) {
-                    errors.push(`Collection ${collection.id} has mismatched parentId (${collection.parentId}) for group ${groupId}`);
-                    isValid = false;
-                }
-    
-                if (!Array.isArray(collection.requirements) || collection.requirements.length === 0) {
-                    errors.push(`Collection ${collection.id} has invalid requirements`);
-                    isValid = false;
-                }
-    
-                if (!Array.isArray(collection.rewards) || collection.rewards.length === 0) {
-                    errors.push(`Collection ${collection.id} has invalid rewards`);
-                    isValid = false;
-                }
-            });
-        }
-    
-        return { isValid, errors };
-    }
-
-    static getTotalDefaultCollections() {
-        return Object.values(DEFAULT_COLLECTIONS)
-            .reduce((total, collections) => total + collections.length, 0);
-    }
-}
-
-   

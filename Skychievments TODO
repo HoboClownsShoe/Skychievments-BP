@@ -1,5 +1,298 @@
-Skychievemnts Flow
 
+Effiecency is the KEY!!
+keeping stats every tick for every player will eventually slow everything down
+
+
+add reward for giving XP amount and XP level 
+
+anyInCategory  ->  onBreakAnyInCategory
+
+
+
+
+add milestone requirements -> timePassedSince accepts an event and amount in minutes
+    used for
+        last death,
+        since first spawn
+        since last sleep
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Quests are a set of randomly generated tasks between 2 and 4
+    the tasks consist of :
+        breaking / placing blocks
+        Killing mobs
+        travelling distances
+        harvesting crops
+        breeding animals
+        collecting blocks / items
+
+Quests must be accepted in order for them to be worked against.
+A maximum of 10 quests per day
+Quests can be timed (hour/day/week/month) 
+[every reward cycle, check which quests are accepted and check requirements against only those]
+
+
+Milestones are the progression method through the game desigend to be a set of requests/rewards to be followed one after another
+
+prerequisites should be used to gate the progression of quests.
+Limiting the number of checks is required, if there are 300 quests you dont want all of them checked for everyplayer every 15 seconds
+the prerequisites system allows for multiple quests to be completed
+the milestone loop needs to check if a quests prerequisites are completed before processing any logic for checking the quests requirements.
+
+USE onPlaceBlock to limit the need for inventory checks
+    tracking blocks that need to be created instead of mined can use the onPlace method to mix up the the quest to make it more ingageing 
+    
+
+-Submit mechanic
+to save on processing every 15 seconds, have a Submit mechanic where the items required for a quest are submitted to the overSeer for analysis.
+Selecting a quest will open up a new screen deatiling the requirments and rewards and will include a "sumbit" button which will remove the items from your inventory and count them towards the requirements
+the sumbit, will only remove items that match the requirements of the selected quest
+this can be used for big colelction type quests like, craft all items made from Oak or collect one of each copper item and variant
+
+The submit can be used for Mine/Kill type quests also, in the guise of a CheckProgress option ( this does take away from the ability to track in realtime though) 
+
+The Inventory check will still have to happen every 15 seconds for smaller logic requiring quests, and prerequisites ont he quests will also reduce the need to check everything
+
+Milestone logic follows the tier levels (tier1 must be completed bfore tier2),  add logic for tier0 collections that are active all the time
+
+Immetiate Work
+
+- add tracking for tool breaking
+- add tracking for location based events (place x blocks at y loction)
+- add tracking for what the players wearing
+- add tracking for when having effect (kill x while having y effect)
+
+hasAllInCategory type milestones have a default amount of 1, which will display badly on the milestone details (0/1 when there are 18 possible so far)
+
+- milestones only need to be checked if they are immediatly achievable, ie milestone 10 is in no way achievable if player has only jsut completed milestone 1
+
+- randomize quest tasks
+
+- can multiple miletones collecting the same thing run concurrently
+    for example, mine 64 cobble & mine one of each stone type 
+
+- there are 2 Player Stats forms
+- implement Commands/Strings features of milestones
+- add online players statistics database to adminMenu - showDynamicProperties
+- go through and check all methods are used and comment their purpose
+- milestone flow seems a little ineffecient, mulitple calls to the same type of method
+- opening milestones main menu before refesh run doesnt update the main milestone count
+- TEST the biome detector entity
+
+
+
+Bugs to Squash!!
+
+- update
+- reload from UI doesnt relaod the milestones
+- when creating a quest in the UI, the group name is being added to the beginning of the name of the new colleciton 
+
+
+What it does
+- quests
+    - create quest from UI
+    - load quest from config file
+        - quests are collection type (have x number of blocks in you inventory), checked on quest group loading
+
+
+- milestones
+    - created from default files
+        - collection type of "milestone"
+        - a milestone is a tiered set of collections currently tracking the number of blocks broken or mobs killed (to expand later)
+        - each collecitons requirements increases giving hte player a set of goals to work towards
+        - each colleciton has its own reward, currently only a defined number of "points"
+
+
+Work ToDo :
+- fakePlayers needs to be easily turn off-able for release 
+- change pack name to QuestinAintEasy
+- add paignation to mining stats page
+- Players Quest book needs a texture
+- Quest Book needs a new name as its more thatn jsut quests
+- Collections needs to be changed to "Quests"
+
+- New screen for collecting quest requirements and rewards. use the current Quest details screen as a template
+
+- New Add Custom Command reward page to create the correct command instead of relying on the user to know
+    - dropdowns for effects
+    - sliders for durations
+
+- Add cancel/back buttons to Create Quest screen
+
+- Add icon chooser for new quests
+
+- Allow the editing of Quests to add remove requirments/rewards and delete quest all together 
+
+- Add create Group option
+
+- Chat Ranks ( customizable preffixes for players chat names)
+
+- Quest Ranking
+    each quest has an in game reward and a quest score value.
+    as you complete more quests, your score increases moving you up the ranks
+    ("points" have been added to milestones, use questPointsManager)
+
+- player progress is recording way too much, it should only need to record the collectionID and a claim date
+
+
+New QuestBook options
+
+Player Levels / Stats
+Jobs
+Warps Menu
+Help Menu
+Leader Boards
+Daily Rewards (active between 00:01 and 23:59, track rewards for a weekly bonus if you collect each day, monthly bonus if collected everyday in a month)
+Lottery
+
+Bounty Board /Assassin Game 
+    - store record of players
+    - add bounty with a reward
+    - addmin add Assassin target, command to give items and items can be tagged to track if they were used
+
+
+Auction House 
+    - players can place items in a chest tagged with special value, which is recorded and removed from the chest
+    - Display the contents in a chest UI form with a real time count of diamonds and who's bidding
+
+Quest types
+    - milestone 
+    - quest
+
+Quest progression
+    - quests can be locked behind other quests where players must complete a previous quest(s) to progress (milestones have preReq, use as template)
+
+Quest Tracking ()
+    - quests can be tracked and moved into tracked category so they are easily found
+    - tracked quests are coloured differntly
+
+Quest Levels
+    - beginner 
+    - intermediate
+    - advanced
+    - expert
+    - devine
+
+Milestone tiers
+    - each quest within a milestone starts at tier I and increases by one for each quest
+
+Quest availability
+    - Daily (refreshed every day at Midnight)
+    - Weekly (refreshed every saturday at midnight)
+    - Monthly (refreshed every 1sy of the month at midnight)
+
+Quest Time limtis
+    - setable time period to compelte the quest after accepting it from the UI
+
+Quest categories
+    - Combat (killing mobs)
+    - Mining (breaking blocks)
+    - Lumberjack (cutting down trees, leaves, bushes)
+    - Damage (dealing damage)
+    - Travelling (racking up distances)
+    - Mastery (collecting exp)
+    - Crafting (making stuffs)
+    - Magic (enchanting items)
+    - Hunting (killing passive mobs and fishing)
+    - Farming ( harveting crops, milking things)
+    - Vetinary (taming and breeding)
+    - Chefing (cooking and making food items)
+    - Extreme (seemingly impossible)
+    - Delivery (deliver things to people)
+
+Recording stats 
+
+
+Quest types
+    - break (break x number of y blocks) - [tracked in realtime]
+    - place (place x number of y block) - [tracked in realtime]
+    - craft (craft x number of y items) - [unable to track realtime]
+    - exp (get x number of xp ) - [tracked in realtime]
+    - collect (have x number of y block in your inventory) - [checked when opening quest book]
+    - launch (throw x number of EnderPearls/Eggs/snow balls/arrows) - [tracked in realtime]
+    - consume (eat x number of y food items) - [tracked in realtime]
+    - cook (pull x number of cooked y items from a furnace) - [unsure if tracking avaialble]
+    - enchant (enchant x number of y items in an enchanting table) - [unsure if tracking avaialble - inventory check maybe]
+    - kill (kill x number of y mobs) - [tracked in realtime]
+    - damage (inflict x amount of damage on y mobs) - [tracked in realtime]
+    - fish (catch x number of y fish) - [tracked in realtime]???
+    - breed (get x number of y mob babies) - [tracked in realtime]
+    - tame (tame x number of y mob) - [tracked in realtime]
+    - shear (shear x number of sheep) - [tracked in realtime]
+    - milk (milk x number of cows) - [tracked in realtime]
+    - trade (trade x number of times for y items) - [tracked in realtime]
+    - gps (get to a specifc location in y time period) - [tracked in realtime]
+    - travel (travel x numebr of blocks by y method (walking, sprinting, flying, rowing, swiming) ) - [tracked in realtime]
+    - die (die x number of times to y mob) - [tracked in realtime]
+    - farm (harvest x numebr of y crops) - [tracked in realtime]
+    - deliver (put x number of y blocks/items in z location) - [tracked in realtime]
+
+Reward types
+    - item (x numebr of y in game items/blocks)
+    - command (custom command, generally player effect or enchanted item)
+    - exp (x number of xp)
+    - points (x numebr of quest points)
+
+
+
+
+
+milestone Flow
+
+initialize
+startProgressChecking (every 15 seconds get all players, get all MileStones)
+pass in first player[0], milestone[0] 
+
+    updateMilestoneProgress
+        gat all progress for player
+        if no progress - initializePlayerMilestones
+        check if milestone completed and if its repeatable
+        
+        checkPrerequisitesEfficient
+            does the milestone have a prereq
+                isCollectionCompleted (is it a Quest and is it completed)
+                is it a milesstone and is it completed
+
+        get the current tiers requirments
+
+        StatisticsManager.getPlayerStats (get the current players Stats)
+
+        is requirement 
+            break - get the current count of required block
+            kill - get the current count of required mob Kills
+            anyBlock - get the total blocks broken
+            anyMob - get the total mobs killed
+
+        if prereq are met
+            update the progress count
+            save the progress
+
+        if the milesStone tier is complete  
+            RewardManager.processRewards
+                if last tier and milestone is repatable set tier back to 1
+                if not last tier, increment tier
+                save progress [again!!]??
+            
+
+
+
+
+
+Skychievemnts Flow
 
 player loads QuestBook
 player chooses a Group
@@ -26,9 +319,102 @@ collectionDetails form too big
 
 
 
-Skychievments features to add
+Skychievments ToDo
 
-Instructions on how to use
+Instruction book on how to use for player
+instruction book on how to use for admin
+
+custom stats forms
+    Mob Stats - using the chestUI to display face icons of the mob and hover lore to show the amount. On click, open mini page showing kill amounts and number of deaths by
+        Kills / Deaths
+        Riding 
+        Breeding
+
+    Block Sats - using the same ChestUi as above
+        Mined
+        Placed
+        
+    Item Stats - using the same ChestUi 
+        Crafted
+
+    Food Stufs - ChestUI
+        Cake Slices
+        Cookie
+        Dried Kelp
+        Glow Berry
+        Honey Bottle
+        puffer fish
+        Raw Cod
+        Cooked Cod
+        Raw Salmon
+        Cooked Salmon
+        Tropical Fish
+        Rotten Flesh
+        Spider Eye
+        Sweet Berry
+        Pumpkin Pie
+        Melon Slice
+        Carrots
+        Golden Carrots
+        Potatoes
+        Baked Potato
+        Poisonous Potato
+        Soup consumed
+        Beetroot
+        Apple
+        Golden Apple
+        Enchanted Golden Apple
+        Cooked Mutton
+        Raw Mutton
+        Cooked Porkchop
+        Raw Porkchop
+        Cooked Chicken
+        Raw Chicken
+        Cooked Steak
+        Raw Beef
+        Cooked Rabbit
+        Raw Rabbit
+
+
+
+
+    Player Stats - same ChestUi
+        Games Quit
+        Time Played
+        Since Last Death
+        Distance Walked
+        Distance Crouched
+        Distance Sprinted
+        Distance Swum
+        Distance Fallen
+        Distance Climbed
+        Distance Flown
+        Distance Dove
+        Distance by Minecart
+        Distance by Boat
+        Distance by Pig
+        Distance by Horse
+        Distance by Elytra
+        Jumps
+        Damage Taken
+        Damage Dealt
+        Number of Deaths
+
+        Player Kills
+        Fish Caught
+        Talked to Villagers
+        Traded to Villagers      
+    
+        Plants Potted
+        Trapped Chests Triggered
+        Items Enchanted
+        Records Played
+
+        Chests Opened
+        Times Slept in a Bed
+        Shulker Box Opened
+        
+
 
 on player inital spawn give playerMenu(QuestBook) item
 

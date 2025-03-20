@@ -1,0 +1,19 @@
+Con-Databases
+New version of JsonDatabase is based on dynamic properties. This database supports all possible Map class operations from ECMAScript.
+
+Inherited from Map
+size: number of properties
+[Symbol.iterator]: is iterable [key, value]
+clear(): clear all values
+delete(key: string): delete specific value
+entries(): generator of all values [key, value]
+forEach(callBack: (value, key, this)=>void): for each all elements and call provided function for that
+get(key: string): returns value for specific key
+set(key: string: value: any): sets new value for provided key
+has(key: string): returns true when database has a value for that key
+keys(): returns iterbale of keys
+values(): returns iterable of values
+Additional Methods & Properties
+dispose(): dispose the current instance of database anc clears it chache, saved data are not lost!
+isValid(): returns true when source is valid and database is not disposed
+isDisposed: property returns if database is disposed

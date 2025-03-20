@@ -1,0 +1,21 @@
+export default {
+	spawn: '',
+	kill: '',
+	respawn: '',
+	jump: '§e(*)§u',
+	attack: '§e(*)§u',
+	shift: '§e(*)§u',
+	hotbar: '<slot: 0-8>',
+	interact: '§e(*)§u <mode? block>',
+	useItem: '§e(*)§u <mode? block>',
+	dropSlot: '<slot? 0-8>',
+	teleport: '',
+	look: '[the block you look at]',
+	breakBlock: '§e(*)§u [the looking block]',
+	build: '§e(*)§u [the looking block]',
+	repeat: 'any action marked with §e*',
+	stop: '',
+	minecart: '',
+	trident: '[requires a trident in any hotbar slot]',
+	dismount: ''
+}

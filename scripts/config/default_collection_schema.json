@@ -1,0 +1,87 @@
+{
+	"id": "cobblestone_1",
+	"type": "quest",
+	"tier": "beginner",
+	"parentId": "group_mining",
+	"displayName": "Stone Age Begins",
+	"lore": "Your first stepping stone to success! Gather basic building materials.",
+	"icon": "textures/ui/mining_icon.png",
+	"commands": [  // commands to run 
+		{
+			"start":[
+				{"sc1":"command 1"}
+			],
+			"cancel":[
+				{"cc1": "command34"}
+			],
+			"expire":[
+				{"ec1":"command1245"}
+			],
+			"complete":[
+				{"rc1":"command3"}
+			]
+		}
+	],
+	"strings": [  // messages to show the player 
+		{
+			"start":[
+				{"ss1":"You have started the quest"}
+			],
+			"cancel":[
+				{"cs1":"why did you cancel the quest, too hard for you"}
+			],
+			"expire":[
+				{"es1":"you ran out of time"}
+			],
+			"complte":[
+				{"rs1":"you did it, well done"}
+			]
+		}
+	],
+	"requirements": [  // what requried for the colleciton to complete
+	    {
+	    	"type": "break", // type of requirement, break blocks
+	        "itemId": "minecraft:cobblestone",
+	        "amount": 64
+	    },
+	    {
+	    	"type": "collect", // type of requirement, items must be in your inventory
+	    	"itemId": "minecraft:sand",
+	    	"amount": 16
+	    }
+	],
+	"rewards": [ // what the player gets upon filling all the requirements 
+	    {
+	        "type": "item",
+	        "itemId": "minecraft:stone_pickaxe",
+	        "amount": 1,
+	        "displayText": "1x Stone Pickaxe"
+	    },
+	    {
+	        "type": "command",
+	        "command": "effect @p haste 300 1",
+	        "displayText": "Haste I Effect for 5 minutes"
+	    },
+	    {
+	    	"type": "point",  //quest points for progression levels
+	    	"amount": 10
+	    }
+	],
+	"options": {
+		"prerequisites":[
+			{
+				"id" : "quest_1"  // quests needed to be completed first
+			}
+		],
+		"cancellable": false,
+		"repeatable": {
+			"enabled" : true,
+			"cooldown" : 10  // in minutes
+		},
+		"timeLimit": 360, // in minutes
+		"enabled": true,
+		"order": 0
+	}	
+}
+
+

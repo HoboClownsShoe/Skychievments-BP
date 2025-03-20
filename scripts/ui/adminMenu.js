@@ -1,14 +1,16 @@
 // scripts/ui/adminMenu.js
 import { ActionFormData, ModalFormData, MessageFormData } from '@minecraft/server-ui';
-import { CollectionManager } from '../config/collections.js';
+import { CollectionManager, CollectionStorage, CollectionHandler, CollectionGroupManager } from '../managers/collectionsManager';
+import { MilestoneManager, MilestoneStorage, MilestoneHandler } from '../managers/milestoneManager.js'
 import { Logger } from '../utils/logger.js';
-import { COLLECTION_GROUPS, CollectionGroupManager } from '../config/collectionGroups.js';
+import { COLLECTION_GROUPS } from '../config/collectionGroups.js';
 import { CREATIVE_CATEGORIES } from '../config/categorizedItems.js'
 import { CollectionHelper } from '../utils/helpers.js';
 import { world } from '@minecraft/server';
-import { SystemManager } from '../utils/systemManager.js';
+import { SystemManager } from '../managers/systemManager.js';
 import { ChestFormData } from '../extensions/forms.js';
 import { loadTestCollections } from '../config/testData.js'
+import { JsonDatabase } from '../database/con-database.js';
 
 
 export class AdminMenu {
@@ -22,19 +24,22 @@ export class AdminMenu {
             const collections = CollectionManager.getCollections();
             const enabledCount = collections.filter(c => c.enabled).length;
             const debugStatus = Logger.isDebugEnabled() ? '§qEnabled' : '§cDisabled';
-        
+            const milestoneStatus = MilestoneManager.isProgressCheckingEnabled() ? '§qEnabled' : '§cDisabled';
+
             const menu = new ActionFormData()
-                .title("Admin")
+                .title(`§p§r§e§f§i§x§rAdmin Panel`)
                 .body(
                     `§7Manage collections and settings\n\n` +                    
-                    `§7Debug Logging: ${debugStatus}\n`
+                    `§7Debug Logging: ${debugStatus}\n` +
+                    `§7Milestone Checking: ${milestoneStatus}\n`
                 )
-                .button("Manage Groups & Collections\n§8View and configure all content")
-                .button("Create Collection\n§8Add new collection")
-                .button("Storage Stats\n§8Check storage usage")
-                .button("System Management\n§8Reset and reload options")
-                .button("Toggle Debug\n§8Debug logging")
-                .button("Close");
+                .button("Manage Quests","textures/ui/groupIcons/quest_book.png")
+                .button("Create Collection", "textures/ui/gear" )
+                .button("Storage Stats", "textures/ui/loot_box.png" )
+                .button("System Management", "textures/ui/debug_glyph_color.png" )
+                .button("Toggle Debug", "textures/ui/buttonNew.png")
+                .button("Toggle Milestones", "textures/ui/timer.png")
+                .button("Close", "textures/ui/redX1" );
 
             const response = await menu.show(player);
             
@@ -58,6 +63,11 @@ export class AdminMenu {
                     player.sendMessage(`§7Debug logging ${debugEnabled ? '§qenabled' : '§cdisabled'}`);
                     await this.showMainMenu(player);
                     break;
+                case 5:
+                    const milestonesEnabled = MilestoneManager.toggleProgressChecking();
+                    player.sendMessage(`§7Milestone progress checking ${milestonesEnabled ? '§qenabled' : '§cdisabled'}`);
+                    await this.showMainMenu(player);
+                    break;
             }
         } catch (error) {
             Logger.log(`Error in admin main menu: ${error}`, "ERROR", "ADMIN_UI");
@@ -77,7 +87,7 @@ export class AdminMenu {
             // Get all groups and their states
             const groups = COLLECTION_GROUPS.sort((a, b) => a.order - b.order);
             const menu = new ActionFormData()
-                .title("§6§lGroups & Collections")
+                .title("§p§r§e§f§i§x§rGroups & Collections")
                 .body("§7Click a group to view its collections\n§8Toggle switches control group visibility\n");
 
             // Add buttons for each group with their current state
@@ -93,7 +103,7 @@ export class AdminMenu {
                 );
             }
 
-            menu.button("Back to Menu\n§8Return to admin menu");
+            menu.button("Back to Menu\n§8Return to admin menu", "textures/ui/arrow_dark_left_stretch.png");
 
             const response = await menu.show(player);
             
@@ -126,7 +136,7 @@ export class AdminMenu {
                 .sort((a, b) => a.order - b.order);
 
             const menu = new ActionFormData()
-                .title(group.displayName)
+                .title(`§p§r§e§f§i§x§r${group.displayName}`)
                 .body(
                     `§7${group.description}\n\n` +
                     `§7Group Status: ${isGroupEnabled ? '§qEnabled' : '§cDisabled'}\n` +
@@ -134,24 +144,20 @@ export class AdminMenu {
                     `§8Click collection to view details or use toggle to enable/disable\n`
                 );
 
-            // Add toggle for group state
+             // Add toggle for group state
             menu.button(
-                `${isGroupEnabled ? '§cDisable' : '§qEnable'} Group\n` +
-                `§8Toggle visibility for all collections`
+                `${isGroupEnabled ? '§cDisable' : '§qEnable'}`, isGroupEnabled ? "textures/ui/redX1" : "textures/ui/check" 
             );
 
             // Add buttons for each collection
             collections.forEach(collection => {
                 menu.button(
-                    `${collection.enabled ? '§q' : '§c'}${collection.displayName}\n` +
-                    `§8${collection.requirements.map(r => 
-                        `${r.amount}x ${r.itemId.split(':')[1]}`
-                    ).join(', ')}`,
+                    `${collection.enabled ? '§q' : '§c'}${collection.displayName}`,
                     collection.icon || "textures/items/paper"
                 );
             });
 
-            menu.button("Back to Groups\n§8Return to group list");
+            menu.button("Back to Group","textures/ui/arrow_dark_left_stretch.png");
 
             const response = await menu.show(player);
             
@@ -205,22 +211,20 @@ export class AdminMenu {
                 .join('\n');
 
             const menu = new ActionFormData()
-                .title(collection.displayName)
+                .title(`§q§u§e§s§t§r${collection.displayName}`)
                 .body(
-                    `§7Description: §f${collection.description}\n\n` +
+                    `§f${collection.description}\n\n` +
                     `§7Status: ${collection.enabled ? '§qEnabled' : '§cDisabled'}\n\n` +
                     `§7Requirements:\n${requirementsText}\n\n` +
-                    `§7Rewards:\n${rewardsText}\n\n` +
-                    `§7Group: §f${collection.parentId}\n` +
-                    `§7ID: §f${collection.id}\n`
+                    `§7Rewards:\n${rewardsText}\n\n`
                 );
 
-            // Add toggle button for collection state
+            // Add toggle button for collection state with different icons
             menu.button(
-                `${collection.enabled ? '§cDisable' : '§qEnable'} Collection\n§8Toggle availability`
+                `${collection.enabled ? '§cDisable' : '§qEnable'}`, collection.enabled ? "textures/ui/redX1" : "textures/ui/confirm" 
             );
 
-            menu.button("Back to Collections\n§8Return to collection list");
+            menu.button("Back", "textures/ui/arrow_dark_left_stretch.png");
 
             const response = await menu.show(player);
             
@@ -258,7 +262,7 @@ export class AdminMenu {
             
             // Group selection code remains the same until we get the selectedGroup
             const groupMenu = new ActionFormData()
-                .title("§6§lSelect Collection Group")
+                .title("§p§r§e§f§i§x§rSelect Collection Group")
                 .body("§7Choose which group this collection belongs to:\n");
     
             const orderedGroups = CollectionGroupManager.getGroupIds()
@@ -270,7 +274,7 @@ export class AdminMenu {
                 
                 groupMenu.button(
                     `${group.displayName}\n` +
-                    `§8${groupCollections.length} collections - ${group.description}`,
+                    `§8${groupCollections.length} collections`,
                     group.icon
                 );
             });
@@ -589,8 +593,8 @@ export class AdminMenu {
                     const currentItems = category.items.slice(startIndex, endIndex);
     
                     const cfd = new ChestFormData('54')
-                        .title(`Item Selector - Page ${currentPage + 1}/${totalPages}`)
-                        .button(0, '§l§4Back', ['', '§r§cGo back to categories!'], 'textures/ui/arrow_l_default')
+                        .title(`Item Selector - Page ${currentPage + 1}/${totalPages}`)                        
+                        .button(0, '§l§4Back', [], 'textures/ui/arrow_l_default')
                         .button(8, '§l§4Cancel', ['', '§r§cCancel!'], 'textures/ui/cancel');
     
                     // Add pagination buttons if needed
@@ -709,6 +713,7 @@ export class AdminMenu {
                 .button("§cFull Reset\n§8Development only")
                 .button("§6Load New Collections\n§8Add new defaults")
                 .button("§eLoad Test Data\n§8Add test collections")
+                .button("§bView Dynamic Properties")  // Add this new button
                 .button("Back\n§8Return to menu");
     
             const response = await menu.show(player);
@@ -727,6 +732,9 @@ export class AdminMenu {
                     break;
                 case 2:
                     await this.showLoadTestDataConfirmation(player);
+                    break;
+                case 3:
+                    await this.showDynamicProperties(player);  // Add this new case
                     break;
                 default:
                     await this.showMainMenu(player);
@@ -881,4 +889,665 @@ export class AdminMenu {
             await this.showSystemManagement(player);
         }
     }
+
+    // static async showDynamicProperties(player) {
+    //     try {
+    //         // Get database instances
+    //         const databases = {
+    //             Collections: new JsonDatabase("skychievments_collections"),
+    //             Groups: new JsonDatabase("skychievments_groups"),
+    //             Logger: new JsonDatabase("skychievments_logger"),
+    //             Progress: new JsonDatabase("skychievments_progress"),
+    //             MobKills: new JsonDatabase("skychievments_mob_kills"),
+    //             Milestones: new JsonDatabase("skychievments_milestones"),
+    //             MilestoneProgress: new JsonDatabase("skychievments_milestone_progress"),
+    //             // player stats
+    //             Stats_Custom: new JsonDatabase("skychievments_stats_QAE_custom"),
+    //             Stats_Placed: new JsonDatabase("skychievments_stats_QAE_placed"),
+    //             Stats_Mined: new JsonDatabase("skychievments_stats_QAE_mined"),
+    //             Stats_Killed: new JsonDatabase("skychievments_stats_QAE_killed"),
+    //             Stats_KilledBy: new JsonDatabase("skychievments_stats_QAE_killed_by")
+    //         };
+    
+    //         // Create initial selection menu
+    //         const mainMenu = new ActionFormData()
+    //             .title("§b§lSystem Data Viewer")
+    //             .body("§7Choose what data to view:")
+    //             .button("View Databases\n§8Browse system databases")
+    //             .button("View Online Players\n§8See player properties")
+    //             .button("Back\n§8Return to system management");
+    
+    //         const mainResponse = await mainMenu.show(player);
+            
+    //         if (mainResponse.canceled || mainResponse.selection === 2) {
+    //             await this.showSystemManagement(player);
+    //             return;
+    //         }
+    
+    //         if (mainResponse.selection === 0) { // Show world database viewer
+
+    //             const dbSelector = new ChestFormData('54')
+    //                 .title('Database Manager');
+    
+    //             dbSelector.button(0, '§l§4Back', ['', '§r§cReturn to System Management'], 'textures/ui/arrow_l_default');
+    
+    //             let slot = 9;
+    //             for (const [name, db] of Object.entries(databases)) {
+    //                 const size = db.size;
+    //                 const isValid = db.isValid();
+    //                 const status = isValid ? '§aValid' : '§cInvalid';
+                    
+    //                 dbSelector.button(
+    //                     slot, 
+    //                     `§l${name} Database`,
+    //                     [
+    //                         `§7Status: ${status}`,
+    //                         `§7Entries: §f${size}`,
+    //                         '',
+    //                         '§eClick to view contents'
+    //                     ],
+    //                     'textures/ui/debug_glyph_color',
+    //                     1
+    //                 );
+    //                 slot++;
+    //             }
+    
+    //             const dbResponse = await dbSelector.show(player);
+                
+    //             if (dbResponse.canceled || dbResponse.selection === 0) {
+    //                 await this.showDynamicProperties(player);
+    //                 return;
+    //             }
+    
+    //             // Show selected database contents
+    //             const selectedDbName = Object.keys(databases)[dbResponse.selection - 9];
+    //             const selectedDb = databases[selectedDbName];
+    
+    //             const menu = new ActionFormData()
+    //                 .title(`§b§l${selectedDbName} Database Contents`);
+    
+    //             let contentText = `§7Database: §f${selectedDbName}\n`;
+    //             contentText += `§7Status: ${selectedDb.isValid() ? '§aValid' : '§cInvalid'}\n`;
+    //             contentText += `§7Entries: §f${selectedDb.size}\n\n`;
+    
+    //             if (selectedDb.size > 0) {
+    //                 selectedDb.forEach((value, key) => {
+    //                     const valueType = typeof value;
+    //                     let displayValue;
+                        
+    //                     switch (valueType) {
+    //                         case 'object':
+    //                             if (value === null) {
+    //                                 displayValue = '§cnull';
+    //                             } else if (Array.isArray(value)) {
+    //                                 displayValue = `§e[Array with ${value.length} items]`;
+    //                             } else {
+    //                                 displayValue = '§e' + JSON.stringify(value);
+    //                             }
+    //                             break;
+    //                         case 'string':
+    //                             if (value.length > 50) {
+    //                                 displayValue = `§a"${value.substring(0, 50)}..."§7 (${value.length} chars)`;
+    //                             } else {
+    //                                 displayValue = `§a"${value}"`;
+    //                             }
+    //                             break;
+    //                         case 'number':
+    //                             displayValue = `§b${value}`;
+    //                             break;
+    //                         case 'boolean':
+    //                             displayValue = value ? '§2true' : '§4false';
+    //                             break;
+    //                         default:
+    //                             displayValue = `§7${value}`;
+    //                     }
+                        
+    //                     contentText += `\n§6${key}\n`;
+    //                     contentText += `§7Type: §e${valueType}\n`;
+    //                     contentText += `§7Value: ${displayValue}\n`;
+    //                 });
+    //             } else {
+    //                 contentText += "\n§8No entries in database.";
+    //             }
+    
+    //             menu.body(contentText)
+    //                 .button("View Another Database\n§8Select a different database")
+    //                 .button("Back to Main Menu\n§8Return to data viewer");
+    
+    //             const response = await menu.show(player);
+                
+    //             if (!response.canceled) {
+    //                 switch (response.selection) {
+    //                     case 0:
+    //                         await this.showDynamicProperties(player);
+    //                         break;
+    //                     case 1:
+    //                         await this.showDynamicProperties(player);
+    //                         break;
+    //                 }
+    //             }
+    //         } else if (mainResponse.selection === 1) { //online players viewer
+
+    //             const players = world.getAllPlayers();
+                
+    //             const playerSelector = new ActionFormData()
+    //                 .title("§b§lOnline Players")
+    //                 .body("§7Select a player to view their dynamic properties:");
+    
+    //             // Add button for each online player
+    //             for (const onlinePlayer of players) {
+    //                 playerSelector.button(
+    //                     `${onlinePlayer.name}\n§8Click to view properties`, 
+    //                     "textures/ui/icon_steve"
+    //                 );
+    //             }
+    
+    //             playerSelector.button("Back\n§8Return to data viewer");
+    
+    //             const playerResponse = await playerSelector.show(player);
+                
+    //             if (playerResponse.canceled || playerResponse.selection === players.length) {
+    //                 await this.showDynamicProperties(player);
+    //                 return;
+    //             }
+    
+    //             // Show selected player's properties
+    //             const selectedPlayer = players[playerResponse.selection];
+                
+    //             let propsText = `§7Dynamic Properties for §f${selectedPlayer.name}§7:\n\n`;
+                
+    //             // Get all properties
+    //             const properties = selectedPlayer.getDynamicPropertyIds();
+                
+    //             if (properties.length > 0) {
+    //                 for (const propId of properties) {
+    //                     const value = selectedPlayer.getDynamicProperty(propId);
+    //                     const valueType = typeof value;
+    //                     let displayValue;
+                        
+    //                     switch (valueType) {
+    //                         case 'object':
+    //                             if (value === null) {
+    //                                 displayValue = '§cnull';
+    //                             } else if (Array.isArray(value)) {
+    //                                 displayValue = `§e[Array with ${value.length} items]`;
+    //                             } else {
+    //                                 displayValue = '§e' + JSON.stringify(value);
+    //                             }
+    //                             break;
+    //                         case 'string':
+    //                             displayValue = `§a"${value}"`;
+    //                             break;
+    //                         case 'number':
+    //                             displayValue = `§b${value}`;
+    //                             break;
+    //                         case 'boolean':
+    //                             displayValue = value ? '§2true' : '§4false';
+    //                             break;
+    //                         default:
+    //                             displayValue = `§7${value}`;
+    //                     }
+                        
+    //                     propsText += `§6${propId}\n`;
+    //                     propsText += `§7Type: §e${valueType}\n`;
+    //                     propsText += `§7Value: ${displayValue}\n\n`;
+    //                 }
+    //             } else {
+    //                 propsText += "§8No dynamic properties found for this player.";
+    //             }
+    
+    //             const propsMenu = new ActionFormData()
+    //                 .title(`§b§l${selectedPlayer.name}'s Properties`)
+    //                 .body(propsText)
+    //                 .button("View Another Player\n§8Select different player")
+    //                 .button("Back to Main Menu\n§8Return to data viewer");
+    
+    //             const propsResponse = await propsMenu.show(player);
+                
+    //             if (!propsResponse.canceled) {
+    //                 switch (propsResponse.selection) {
+    //                     case 0:
+    //                         await this.showDynamicProperties(player);
+    //                         break;
+    //                     case 1:
+    //                         await this.showDynamicProperties(player);
+    //                         break;
+    //                 }
+    //             }
+    //         }
+    
+    //     } catch (error) {
+    //         Logger.log(`Error showing system data: ${error}`, "ERROR", "ADMIN_UI");
+    //         player.sendMessage('§c§lAn error occurred while showing system data.');
+    //         await this.showSystemManagement(player);
+    //     }
+    // }
+
+    // In AdminMenu class:
+
+    static async showDynamicProperties(player) {
+        try {
+            Logger.log(`Showing Game Properies`, "DEBUG", "ADMIN_UI");
+            const menu = new ActionFormData()
+                .title("Database Viewer")
+                .body("§7Choose what to view:")
+                .button("World Databases\n§8View system databases", "textures/ui/debug_glyph_color")
+                .button("Player Statistics\n§8View player stats", "textures/ui/icon_multiplayer")
+                .button("Back\n§8Return to system management");
+
+            const response = await menu.show(player);
+
+            if (response.canceled || response.selection === 2) {
+                await this.showSystemManagement(player);
+                return;
+            }
+
+            switch (response.selection) {
+                case 0:
+                    await this.showWorldDatabases(player);
+                    break;
+                case 1:
+                    await this.showPlayerStats(player);
+                    break;
+            }
+        } catch (error) {
+            Logger.log(`Error in database viewer: ${error}`, "ERROR", "ADMIN_UI");
+            player.sendMessage('§cAn error occurred while viewing databases.');
+        }
+    }
+
+    static async showWorldDatabases(player) {
+        try {
+            Logger.log(`Showing World Databases`, "DEBUG", "ADMIN_UI");
+            // Get world database instances
+            const databases = {
+                Collections: new JsonDatabase("skychievments_collections"),
+                Groups: new JsonDatabase("skychievments_groups"),
+                Logger: new JsonDatabase("skychievments_logger"),
+                Progress: new JsonDatabase("skychievments_progress"),
+                Milestones: new JsonDatabase("skychievments_milestones"),
+                MilestoneProgress: new JsonDatabase("skychievments_milestone_progress"),
+                BlockDatabase: new JsonDatabase("skychievments_block_data")
+            };
+
+            const menu = new ChestFormData('90')
+                .title('World Databases')
+                .button(0, '§l§4Back', [], 'textures/ui/arrow_l_default');
+
+            let slot = 10;
+            for (const [name, db] of Object.entries(databases)) {
+                const size = db.size;
+                const isValid = db.isValid();
+                const status = isValid ? '§aValid' : '§cInvalid';
+                
+                menu.button(
+                    slot, 
+                    `§l${name}`,
+                    [
+                        `§7Status: ${status}`,
+                        `§7Entries: §f${size}`,
+                        '',
+                        '§7Click to view contents'
+                    ],
+                    'textures/ui/debug_glyph_color',
+                    1
+                );
+                slot += 2;
+            }
+
+            const response = await menu.show(player);
+
+            if (response.canceled || response.selection === 0) {
+                await this.showDynamicProperties(player);
+                return;
+            }
+
+            // Show selected database contents
+            const selectedName = Object.keys(databases)[Math.floor((response.selection - 10) / 2)];
+            if (selectedName) {
+                await this.showDatabaseContents(player, selectedName, databases[selectedName]);
+                return;
+            }
+
+        } catch (error) {
+            Logger.log(`Error showing world databases: ${error}`, "ERROR", "ADMIN_UI");
+            player.sendMessage('§cAn error occurred while viewing databases.');
+        }
+    }
+
+    static async showDatabaseContents(player, databaseName, database) {
+        try {
+            Logger.log(`Showing database contents for : ${databaseName}`, "DEBUG", "ADMIN_UI");
+            // Create paginated view of database entries
+            let currentPage = 0;
+            const ITEMS_PER_PAGE = 45;
+            const entries = Array.from(database.entries());
+            const totalPages = Math.ceil(entries.length / ITEMS_PER_PAGE);
+
+                const menu = new ChestFormData('90')
+                    .title(`${databaseName} Contents`)
+                    .button(0, '§l§4Back', [], 'textures/ui/arrow_l_default');
+
+                // Add pagination buttons if needed
+                if (currentPage > 0) {
+                    menu.button(3, '§l§ePrevious Page', [], 'textures/ui/arrow_left');
+                }
+                if (currentPage < totalPages - 1) {
+                    menu.button(5, '§l§eNext Page', [], 'textures/ui/arrow_right');
+                }
+
+                // Add database entries
+                const startIndex = currentPage * ITEMS_PER_PAGE;
+                const pageEntries = entries.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+                let slot = 9;
+                for (const [key, value] of pageEntries) {
+                    const valueType = typeof value;
+                    let displayValue = '';
+
+                    // Format value based on its type
+                    switch (valueType) {
+                        case 'object':
+                            if (value === null) {
+                                displayValue = '§cnull';
+                            } else if (Array.isArray(value)) {
+                                displayValue = `§e[Array: ${value.length} items]`;
+                            } else {
+                                const size = Object.keys(value).length;
+                                displayValue = `§e{Object: ${size} properties}`;
+                            }
+                            break;
+                        case 'string':
+                            if (value.length > 50) {
+                                displayValue = `§a"${value.substring(0, 47)}..."`;
+                            } else {
+                                displayValue = `§a"${value}"`;
+                            }
+                            break;
+                        case 'number':
+                            displayValue = `§b${value.toLocaleString()}`;
+                            break;
+                        case 'boolean':
+                            displayValue = value ? '§2true' : '§4false';
+                            break;
+                        default:
+                            displayValue = `§7${value}`;
+                    }
+
+                    menu.button(
+                        slot,
+                        key,
+                        [
+                            `§7Type: §f${valueType}`,
+                            `§7Value: ${displayValue}`,
+                            '',
+                            '§8Click for full details'
+                        ],
+                        'textures/ui/debug_glyph_color',
+                        1
+                    );
+                    slot++;
+                }
+
+                const response = await menu.show(player);
+
+                // Handle navigation
+                if (response.canceled || response.selection === 0) {
+                    await this.showWorldDatabases(player);
+                    return;
+                }
+
+                // Handle pagination
+                if (response.selection === 3 && currentPage > 0) {
+                    currentPage--;
+                    
+                }
+                if (response.selection === 5 && currentPage < totalPages - 1) {
+                    currentPage++;
+                    
+                }
+
+                // Handle entry selection
+                const selectedIndex = response.selection - 9;
+                if (selectedIndex >= 0 && selectedIndex < pageEntries.length) {
+                    const [key, value] = pageEntries[selectedIndex];
+                    await this.showDatabaseEntryDetails(player, databaseName, key, value, database);
+                    return;
+                }
+            
+        } catch (error) {
+            Logger.log(`Error showing database contents: ${error}`, "ERROR", "ADMIN_UI");
+            player.sendMessage('§cAn error occurred while viewing database contents.');
+        }
+    }
+
+    static async showDatabaseEntryDetails(player, databaseName, key, value, database) {
+        try {
+            Logger.log(`Showing Database Entry Details : ${databaseName}`, "DEBUG", "ADMIN_UI");
+            // Format the value as pretty-printed JSON if it's an object
+            let displayValue = typeof value === 'object' ? 
+                JSON.stringify(value, null, 2) : String(value);
+
+            // Split long content into pages if needed
+            const contentLines = displayValue.split('\n');
+            const LINES_PER_PAGE = 500;
+            const totalPages = Math.ceil(contentLines.length / LINES_PER_PAGE);
+            let currentPage = 0;
+
+                const startLine = currentPage * LINES_PER_PAGE;
+                const pageLines = contentLines.slice(startLine, startLine + LINES_PER_PAGE);
+            while(true) {
+                const menu = new ActionFormData()
+                    .title(`${databaseName}: ${key}`)
+                    .body(
+                        `§7Page ${currentPage + 1}/${totalPages}\n\n` +
+                        `§7Key: §f${key}\n` +
+                        `§7Type: §f${typeof value}\n\n` +
+                        `§7Value:\n§f${pageLines.join('\n')}`
+                    );
+
+                if (currentPage > 0) {
+                    menu.button("Previous Page", "textures/ui/arrow_left");
+                }
+                if (currentPage < totalPages - 1) {
+                    menu.button("Next Page", "textures/ui/arrow_right");
+                }
+                menu.button("Back", "textures/ui/arrow_dark_left_stretch.png");
+
+                const response = await menu.show(player);
+
+                if (response.canceled || response.selection === (totalPages > 1 ? response.selection === menu.buttons.length - 1 : 0)) {
+                    await this.showDatabaseContents(player, databaseName, database);
+                    return;
+                }
+
+                if (totalPages > 1) {
+                    if (response.selection === 0 && currentPage > 0) {
+                        currentPage--;
+                    } else if (response.selection === 1 && currentPage < totalPages - 1) {
+                        currentPage++;
+                    }
+                }
+            }
+            
+        } catch (error) {
+            Logger.log(`Error showing database entry details: ${error}`, "ERROR", "ADMIN_UI");
+            player.sendMessage('§cAn error occurred while viewing entry details.');
+        }
+    }
+
+    static async showPlayerStats(player) {
+        try {
+            Logger.log(`Showing Player Stats`, "DEBUG", "ADMIN_UI");
+            const menu = new ChestFormData('90')
+                .title('Player Statistics')
+                .button(0, '§l§4Back', [], 'textures/ui/arrow_l_default');
+
+            // Add online players
+            let slot = 10;
+            for (const onlinePlayer of world.getAllPlayers()) {
+                menu.button(
+                    slot,
+                    `§l${onlinePlayer.name}`,
+                    [
+                        `§7Player ID: ${onlinePlayer.id}`,
+                        '',
+                        '§7Click to view statistics'
+                    ],
+                    'textures/ui/icon_multiplayer',
+                    1
+                );
+                slot++;
+            }
+
+            const response = await menu.show(player);
+
+            if (response.canceled || response.selection === 0) {
+                await this.showDynamicProperties(player);
+                return;
+            }
+
+            // Get selected player
+            const selectedPlayer = Array.from(world.getAllPlayers())[response.selection - 10];
+            if (selectedPlayer) {
+                await this.showPlayerStatDatabases(player, selectedPlayer);
+            }
+
+        } catch (error) {
+            Logger.log(`Error showing player stats menu: ${error}`, "ERROR", "ADMIN_UI");
+            player.sendMessage('§cAn error occurred while viewing player statistics.');
+        }
+    }
+
+    static async showPlayerStatDatabases(player, targetPlayer) {
+        try {
+            Logger.log(`Showing Players Stat Databases`, "DEBUG", "ADMIN_UI");
+            const statTypes = {
+                'Custom Stats': 'QAE_custom',
+                'Block Placement': 'QAE_placed',
+                'Block Mining': 'QAE_mined',
+                'Entity Kills': 'QAE_killed',
+                'Deaths By': 'QAE_killed_by'
+            };
+
+            const menu = new ChestFormData('90')
+                .title(`Stats: ${targetPlayer.name}`)
+                .button(0, '§l§4Back', [], 'textures/ui/arrow_l_default');
+
+            let slot = 10;
+            for (const [displayName, dbSuffix] of Object.entries(statTypes)) {
+                const db = new JsonDatabase(`skychievments_stats_${dbSuffix}`);
+                const playerStats = db.get(targetPlayer.id) || {};
+                const statCount = Object.keys(playerStats).length;
+                const totalValue = Object.values(playerStats).reduce((sum, val) => sum + val, 0);
+
+                menu.button(
+                    slot,
+                    `§l${displayName}`,
+                    [
+                        `§7Unique Stats: §f${statCount}`,
+                        `§7Total Value: §f${totalValue.toLocaleString()}`,
+                        '',
+                        '§7Click to view details'
+                    ],
+                    'textures/ui/debug_glyph_color',
+                    1
+                );
+                slot += 2;
+            }
+
+            const response = await menu.show(player);
+
+            if (response.canceled || response.selection === 0) {
+                await this.showPlayerStats(player);
+                return;
+            }
+
+            // Get selected stat type
+            const selectedType = Object.entries(statTypes)[Math.floor((response.selection - 10) / 2)];
+            if (selectedType) {
+                const db = new JsonDatabase(`skychievments_stats_${selectedType[1]}`);
+                await this.showPlayerStatDetails(player, targetPlayer, selectedType[0], db);
+            }
+
+        } catch (error) {
+            Logger.log(`Error showing player stat databases: ${error}`, "ERROR", "ADMIN_UI");
+            player.sendMessage('§cAn error occurred while viewing statistics.');
+        }
+    }
+
+    static async showPlayerStatDetails(player, targetPlayer, statType, database) {
+        try {
+            Logger.log(`Showing Player Stat Details`, "DEBUG", "ADMIN_UI");
+            const stats = database.get(targetPlayer.id) || {};
+            const entries = Object.entries(stats).sort(([, a], [, b]) => b - a);
+
+            // Create paginated view
+            let currentPage = 0;
+            const ITEMS_PER_PAGE = 45;
+            const totalPages = Math.ceil(entries.length / ITEMS_PER_PAGE);
+
+            while (true) {
+                const menu = new ChestFormData('90')
+                    .title(`${statType} - ${targetPlayer.name}`)
+                    .button(0, '§l§4Back', [], 'textures/ui/arrow_l_default');
+
+                // Add pagination buttons if needed
+                if (currentPage > 0) {
+                    menu.button(3, '§l§ePrevious Page', [], 'textures/ui/arrow_left');
+                }
+                if (currentPage < totalPages - 1) {
+                    menu.button(5, '§l§eNext Page', [], 'textures/ui/arrow_right');
+                }
+
+                // Add stat entries
+                const startIndex = currentPage * ITEMS_PER_PAGE;
+                const pageEntries = entries.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+                let slot = 9;
+                for (const [statId, value] of pageEntries) {
+                    const formattedName = statId.split(':')[1]
+                        ?.split('_')
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                        .join(' ') || statId;
+
+                    menu.button(
+                        slot,
+                        formattedName,
+                        [
+                            `§7Value: §f${value.toLocaleString()}`,
+                            '',
+                            '§8' + statId
+                        ],
+                        'textures/ui/debug_glyph_color',
+                        1
+                    );
+                    slot++;
+                }
+
+                const response = await menu.show(player);
+
+                // Handle navigation
+                if (response.canceled || response.selection === 0) {
+                    await this.showPlayerStatDatabases(player, targetPlayer);
+                    return;
+                }
+
+                // Handle pagination
+                if (response.selection === 3 && currentPage > 0) {
+                    currentPage--;
+                    continue;
+                }
+                if (response.selection === 5 && currentPage < totalPages - 1) {
+                    currentPage++;
+                    continue;
+                }
+            }
+        } catch (error) {
+            Logger.log(`Error showing stat details: ${error}`, "ERROR", "ADMIN_UI");
+            player.sendMessage('§cAn error occurred while viewing statistics.');
+        }
+    }
+ 
+
 }

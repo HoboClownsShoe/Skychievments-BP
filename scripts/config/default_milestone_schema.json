@@ -1,0 +1,106 @@
+{
+	"id": "mc1",
+	"type": "milestone",
+	"level": "beginner",
+	"parentId": "group_mgining_milestones",
+	"displayName": "Stone Age Begins",
+	"description": "Your first stepping stone to success! Gather basic building materials.",
+	"lore" : "this is displayed when hovering over the quest",
+	"icon": "textures/ui/mining_icon.png",	
+    "collections": [  // collecitons that are part of this milestone
+        {
+            "id": "mc1_1",
+            "tier": 1,
+            "slot": 10,
+            "displayName": "Stone Miner I",
+            "description": "Mine 1,000 stone blocks",
+			"commands": [{}],  // commands to run
+			"strings": [{
+                "start": [
+                    {"ss1": "You have started the quest"}
+                ],
+                "complete": [
+                    {"rs1": "you did it, well done"}
+                ]
+            }],  // messages to show the player
+            "requirements": [
+                {
+                    "type": "break",  
+                    "itemId": "minecraft:stone",
+                    "amount": 1000
+                }
+            ],
+            "rewards": [
+                {
+                    "type": "point",
+                    "amount": 10
+                }
+            ]
+        },
+		{
+            "id": "mc1_2",
+            "type": "milestone",
+            "tier": 2,
+            "slot": 12,
+            "displayName": "Stone Miner II",
+            "description": "Mine 10,000 stone blocks",
+			"commands": [{}],
+			"strings": [{}],
+            "requirements": [
+                {
+                    "type": "break",
+                    "itemId": "minecraft:stone",
+                    "amount": 10000
+                }
+            ],
+            "rewards": [
+                {
+                    "type": "point",
+                    "amount": 100
+                }
+            ]
+        },
+		{
+            "id": "mc1_3",
+            "type": "milestone",
+            "tier": 3,
+            "slot": 14,  
+            "displayName": "Stone Miner III",
+            "description": "Mine 100,000 stone blocks",
+			"commands": [{}],
+			"strings": [{}],
+            "requirements": [
+                {
+                    "type": "break",
+                    "itemId": "minecraft:stone",
+                    "amount": 100000
+                }
+            ],
+            "rewards": [
+                {
+                    "type": "point",
+                    "amount": 1000
+                },
+                {
+                    "type": "comamnd",
+                    "command": "effect @p haste 300 1"
+                }
+            ]
+        }
+    ],
+	"options": {
+		"prerequisites":[
+			{
+				"id" : "cobblestone_1"  // quests needed to be completed first
+			}
+		],
+		"cancellable": false,  // can you cancel the quest
+		"repeatable": {  // can you repeat the quest
+			"enabled" : true,
+			"cooldown" : 10  // how long to wait before repeating
+		},
+		"timeLimit": 0, // in minutes
+		"enabled": true,
+		"order": 0
+	}	
+}
