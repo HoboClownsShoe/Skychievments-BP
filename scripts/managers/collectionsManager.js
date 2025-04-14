@@ -1,6 +1,7 @@
 // scripts/config/collections.js
 import { world } from '@minecraft/server';
 import { Logger } from '../utils/logger.js';
+import { RequirementChecker } from '../managers/requirementsManager.js'; // Import RequirementChecker
 import { COLLECTION_GROUPS} from '../config/collectionGroups.js';
 import { DEFAULT_COLLECTIONS } from '../config/collections.js';
 import { JsonDatabase } from '../database/con-database.js';
@@ -183,52 +184,44 @@ export class CollectionHandler {
                 progress = {};
             }
 
-            // Single inventory scan for the entire group
-            const container = player.getComponent('inventory').container;
-            const inventoryCounts = {};
-            for (let i = 0; i < container.size; i++) {
-                const item = container.getItem(i);
-                if (item) {
-                    inventoryCounts[item.typeId] = (inventoryCounts[item.typeId] || 0) + item.amount;
-                }
-            }
+            // No need for manual inventory scan here anymore
 
             const claimableCollections = [];
 
-            // Compare inventory against each collection's requirements
+            // Check requirements using RequirementChecker
             for (const collection of collections) {
                 try {
                     // Skip if already completed
                     if (progress[collection.id]?.completed) continue;
 
-                    // Initialize collection progress if needed
+                    // Check requirements using the unified checker
+                    const checkResult = RequirementChecker.checkRequirements(player, collection.requirements);
+                    const { requirements: checkedReqs, allCompleted: allRequirementsMet } = checkResult;
+
+                    // Initialize or update progress based on checker results
+                    let progressUpdated = false;
                     if (!progress[collection.id]) {
+                        // Initialize progress if it doesn't exist
                         progress[collection.id] = {
-                            requirements: collection.requirements.map(req => ({
-                                itemId: req.itemId,
-                                amount: 0,
-                                completed: false
+                            requirements: checkedReqs.map(req => ({
+                                type: req.type, // Store type for potential future use
+                                itemId: collection.requirements.find(r => r.type === req.type)?.itemId, // Find original itemId if needed
+                                amount: req.currentValue,
+                                completed: req.isCompleted
                             })),
                             completed: false
                         };
-                    }
-
-                    let allRequirementsMet = true;
-                    let updatedAmounts = false;
-
-                    // Update progress and check if all requirements are met
-                    for (let i = 0; i < collection.requirements.length; i++) {
-                        const requirement = collection.requirements[i];
-                        const currentCount = inventoryCounts[requirement.itemId] || 0;
-
-                        // Update progress if amount changed
-                        if (progress[collection.id].requirements[i].amount !== currentCount) {
-                            progress[collection.id].requirements[i].amount = currentCount;
-                            updatedAmounts = true;
-                        }
-
-                        if (currentCount < requirement.amount) {
-                            allRequirementsMet = false;
+                        progressUpdated = true; // Progress was initialized
+                    } else {
+                        // Update existing progress if values changed
+                        for (let i = 0; i < checkedReqs.length; i++) {
+                            const currentProgReq = progress[collection.id].requirements[i];
+                            const checkedReq = checkedReqs[i];
+                            if (currentProgReq.amount !== checkedReq.currentValue || currentProgReq.completed !== checkedReq.isCompleted) {
+                                currentProgReq.amount = checkedReq.currentValue;
+                                currentProgReq.completed = checkedReq.isCompleted;
+                                progressUpdated = true;
+                            }
                         }
                     }
 
@@ -236,15 +229,15 @@ export class CollectionHandler {
                     if (allRequirementsMet) {
                         claimableCollections.push({
                             collection,
+                            // Pass the latest checked requirements state
                             requirements: progress[collection.id].requirements
                         });
                     }
 
-                    // Save updated progress if needed
-                    if (updatedAmounts) {
+                    // Save updated progress only if something changed
+                    if (progressUpdated) {
                         await this.savePlayerProgress(player, progress);
                     }
-
                 } catch (collectionError) {
                     Logger.log(`Error processing collection ${collection.id}: ${collectionError}`, "ERROR", "COLLECTIONS");
                     continue;
@@ -728,4 +721,3 @@ export const MAX_COLLECTIONS_TOTAL = COLLECTION_GROUPS.reduce(
                               DEFAULT_GROUP_SETTINGS.maxCollectionsPerGroup), 
     0
 );
-   

@@ -6,12 +6,12 @@ import { QuestPointsManager } from '../managers/questPointManager.js'
 import { MILESTONES } from '../config/milestones'
 import { Logger } from '../utils/logger.js';
 import { StatValueFormatter } from '../utils/helpers.js';
-import { TicksPerSecond, world } from "@minecraft/server";
-import { KillTracker } from "detectors/killTracker.js"
 import { ChestFormData } from '../extensions/forms.js';
 import { MOBLIST } from '../config/mobsList.js';
 import { StatisticsManager } from '../managers/statisticsManager.js';
 import { system } from "@minecraft/server";
+import { itemDatabase } from '../managers/itemManager.js';
+import { SimpleQuestBook } from './simpleQuestBook.js';
 
 
 
@@ -20,7 +20,7 @@ export class PlayerMenu {
     static async showMainMenu(player) {
         try {
 
-            console.log(`${player.id} opened his book`);
+           // console.log(`${player.id} opened his book`);
             const menu = new ActionFormData()
                 .title("Skychievments")
                 .body("§7Select a category to view:\n")
@@ -98,6 +98,18 @@ export class PlayerMenu {
             );
 
             statsForm.button(
+                11,
+                '§l§eBroken Tools Statistics',
+                [
+                    `§7Total Broken Toold: §f${playerStats.toolBroken.getTotalToolsBreak()}`,                    
+                    '',
+                    '§7Click for details'
+                ],
+                'textures/items/diamond_pickaxe',
+                1
+            );
+
+            statsForm.button(
                 19,
                 '§l§eBuilding Statistics',
                 [
@@ -166,6 +178,9 @@ export class PlayerMenu {
                     break;
                 case 10:
                     await this.showDetailedMiningStats(player);
+                    break;
+                case 11:
+                    await this.showDetailedToolsBrokenStats(player);
                     break;
                 case 19:
                     await this.showDetailedBuildingStats(player);
@@ -314,6 +329,92 @@ export class PlayerMenu {
 
     }
 
+    static async showDetailedToolsBrokenStats(player) {
+        try {
+            const itemDb = itemDatabase.getInstance();
+            const playerStats = StatisticsManager.getPlayerStats(player);
+            const brokenStats = playerStats.toolBroken.getAllStatistics();
+            const totalBreaks = playerStats.toolBroken.getTotalToolsBreak();
+    
+            // Sort tools by most broken
+            const sortedTools = Object.entries(brokenStats)
+                .sort(([, a], [, b]) => b - a);
+    
+            // Create paginated view for the tools
+            let currentPage = 0;
+            const ITEMS_PER_PAGE = 45; // Leave room for navigation
+            const totalPages = Math.ceil(sortedTools.length / ITEMS_PER_PAGE);
+    
+            while (true) {
+                const startIndex = currentPage * ITEMS_PER_PAGE;
+                const pageItems = sortedTools.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    
+                const statsForm = new ChestFormData('54')
+                    .title('Tools Broken')
+                    .button(0, '§l§4Back', [], 'textures/ui/arrow_l_default');
+    
+                // Add pagination buttons if needed
+                if (currentPage > 0) {
+                    statsForm.button(3, '§l§ePrevious Page', ['', `§r§ePage ${currentPage}/${totalPages}`], 'textures/ui/arrow_left');
+                }
+                if (currentPage < totalPages - 1) {
+                    statsForm.button(5, '§l§eNext Page', ['', `§r§ePage ${currentPage + 2}/${totalPages}`], 'textures/ui/arrow_right');
+                }
+    
+                // Add buttons for each tool type
+                let slot = 9;
+                for (const [toolId, count] of pageItems) {
+                    // Format tool name for display
+                    const toolName = toolId.split(':')[1]
+                        .split('_')
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                        .join(' ');
+    
+                    statsForm.button(
+                        slot,
+                        toolName,
+                        [`§7Tools Broken: §f${count}`],
+                        toolId,
+                        1
+                    );
+                    slot++;
+                }
+    
+                const response = await statsForm.show(player);
+    
+                // Handle form closure or back button
+                if (response.canceled) {
+                    await this.showPlayerStats(player);
+                    return;
+                }
+    
+                // Handle back button
+                if (response.selection === 0) {
+                    await this.showPlayerStats(player);
+                    return;
+                }
+    
+                // Handle pagination
+                if (response.selection === 3 && currentPage > 0) {
+                    currentPage--;
+                    continue;
+                }
+                if (response.selection === 5 && currentPage < totalPages - 1) {
+                    currentPage++;
+                    continue;
+                }
+    
+                // If we get here, just show the stats menu
+                await this.showPlayerStats(player);
+                return;
+            }
+        }
+        catch (error) {
+            Logger.log(`Error showing Broken Tool stats: ${error}`, "ERROR", "PLAYER_UI");
+            player.sendMessage('§cAn error occurred while showing broken tool statistics.');
+        }
+    }
+
     // Helper method for showing detailed building statistics (only shows blocks with stats)
     static async showDetailedBuildingStats(player) {
         try {
@@ -360,7 +461,7 @@ export class PlayerMenu {
                     statsForm.button(
                         slot,
                         blockName,
-                        [`§7Blocks Mined: §f${count}`],
+                        [`§7Blocks Placed: §f${count}`],
                         blockId,
                         1
                     );
@@ -712,8 +813,11 @@ export class PlayerMenu {
                 { statistic: "minecraft:aviate_one_cm" /* aviateOneCm */, translate: "stat.minecraft.aviate_one_cm", type: "distance", icon: "textures/items/elytra.png" },
                 { statistic: "minecraft:fly_one_cm" /* flyOneCm */, translate: "stat.minecraft.fly_one_cm", type: "distance", icon: "textures/ui/player" },
                 { statistic: "minecraft:swim_one_cm" /* swimOneCm */, translate: "stat.minecraft.swim_one_cm", type: "distance", icon: "textures/items/turtle_helmet.png" },
-                { statistic: "minecraft:climb_one_cm" /* climbOneCm */, translate: "stat.minecraft.climb_one_cm", type: "distance", icon: "textures/items/ladder.png" }
-                
+                { statistic: "minecraft:climb_one_cm" /* climbOneCm */, translate: "stat.minecraft.climb_one_cm", type: "distance", icon: "textures/items/ladder.png" },
+                { statistic: "minecraft:play_time" /* playTime */, translate: "stat.minecraft.play_time", type: "time", icon: "textures/items/clock_item.png" },
+                { statistic: "minecraft:time_since_death" /* timeSinceDeath */, translate: "stat.minecraft.time_since_death", type: "time", icon: "textures/items/clock_item.png" },
+                { statistic: "minecraft:time_since_rest" /* timeSinceRest */, translate: "stat.minecraft.time_since_rest", type: "time", icon: "textures/items/clock_item.png" },
+                { statistic: "minecraft:total_world_time" /* totalWorldTime */, translate: "stat.minecraft.total_world_time", type: "time", icon: "textures/items/clock_item.png" }
 
 
 
@@ -727,18 +831,16 @@ export class PlayerMenu {
                 //{ statistic: "minecraft:open_chest" /* openChest */, translate: "stat.minecraft.open_chest", type: "int" },
                 // { statistic: CustomStatistic.damageAbsorbed, translate: "stat.minecraft.damage_absorbed", type: "float" },
                 // { statistic: CustomStatistic.damageBlockedByShield, translate: "stat.minecraft.damage_blocked_by_shield", type: "float" },
-        //{ statistic: "minecraft:damage_dealt" /* damageDealt */, translate: "stat.minecraft.damage_dealt", type: "float" },
+                //{ statistic: "minecraft:damage_dealt" /* damageDealt */, translate: "stat.minecraft.damage_dealt", type: "float" },
                 // { statistic: CustomStatistic.damageDealtAbsorbed, translate: "stat.minecraft.damage_dealt_absorbed", type: "float" },
                 // { statistic: CustomStatistic.damageDealtResisted, translate: "stat.minecraft.damage_dealt_resisted", type: "float" },
                 // { statistic: CustomStatistic.damageResisted, translate: "stat.minecraft.damage_resisted", type: "float" },
-        //{ statistic: "minecraft:damage_taken" /* damageTaken */, translate: "stat.minecraft.damage_taken", type: "float" },
+                //{ statistic: "minecraft:damage_taken" /* damageTaken */, translate: "stat.minecraft.damage_taken", type: "float" },
                 //{ statistic: "minecraft:inspect_dispenser" /* inspectDispenser */, translate: "stat.minecraft.inspect_dispenser", type: "int" },
-                // { statistic: CustomStatistic.fallOneCm, translate: "stat.minecraft.fall_one_cm", type: "distance" },
-                
+                // { statistic: CustomStatistic.fallOneCm, translate: "stat.minecraft.fall_one_cm", type: "distance" },                
                 //{ statistic: "minecraft:walk_on_water_one_cm" /* walkOnWaterOneCm */, translate: "stat.minecraft.walk_on_water_one_cm", type: "distance" },
                 //{ statistic: "minecraft:walk_under_water_one_cm" /* walkUnderWaterOneCm */, translate: "stat.minecraft.walk_under_water_one_cm", type: "distance" },
-                // { statistic: CustomStatistic.boatOneCm, translate: "stat.minecraft.boat_one_cm", type: "distance" },
-                
+                // { statistic: CustomStatistic.boatOneCm, translate: "stat.minecraft.boat_one_cm", type: "distance" },                
                 // { statistic: CustomStatistic.horseOneCm, translate: "stat.minecraft.horse_one_cm", type: "distance" },
                 // { statistic: CustomStatistic.minecartOneCm, translate: "stat.minecraft.minecart_one_cm", type: "distance" },
                 // { statistic: CustomStatistic.pigOneCm, translate: "stat.minecraft.pig_one_cm", type: "distance" },
@@ -778,11 +880,7 @@ export class PlayerMenu {
                 //{ statistic: "minecraft:open_shulker_box" /* openShulkerBox */, translate: "stat.minecraft.open_shulker_box", type: "int" },
                 //{ statistic: "minecraft:sneak_time" /* sneakTime */, translate: "stat.minecraft.sneak_time", type: "time" },
                 //{ statistic: "minecraft:talked_to_villager" /* talkedToVillager */, translate: "stat.minecraft.talked_to_villager", type: "int" },
-                //{ statistic: "minecraft:target_hit" /* targetHit */, translate: "stat.minecraft.target_hit", type: "int" },
-                //{ statistic: "minecraft:play_time" /* playTime */, translate: "stat.minecraft.play_time", type: "time" },
-                //{ statistic: "minecraft:time_since_death" /* timeSinceDeath */, translate: "stat.minecraft.time_since_death", type: "time" },
-                //{ statistic: "minecraft:time_since_rest" /* timeSinceRest */, translate: "stat.minecraft.time_since_rest", type: "time" },
-                //{ statistic: "minecraft:total_world_time" /* totalWorldTime */, translate: "stat.minecraft.total_world_time", type: "time" },
+                //{ statistic: "minecraft:target_hit" /* targetHit */, translate: "stat.minecraft.target_hit", type: "int" },                
                 //{ statistic: "minecraft:sleep_in_bed" /* sleepInBed */, translate: "stat.minecraft.sleep_in_bed", type: "int" },
                 // { statistic: CustomStatistic.tradedWithVillager, translate: "stat.minecraft.traded_with_villager", type: "int" },
                 //{ statistic: "minecraft:trigger_trapped_chest" /* triggerTrappedChest */, translate: "stat.minecraft.trigger_trapped_chest", type: "int" },
@@ -1248,131 +1346,207 @@ export class PlayerMenu {
             // Filter out hidden milestones
             const visibleMilestones = allMilestones.filter(milestone => !milestone.isHidden);
             
-            const menu = new ChestFormData('90')
-                .title('MileStones')
-                //.background("chestUI_90-NUmbers.png")
-                .button(81, '§l§4Back', [], 'textures/ui/QuestIcons/back', 50, 50)
-                .button(89, '§l§6Refresh Milestones', [], 'textures/ui/refresh_light');
+            const menu = new SimpleQuestBook()
+                .title('NewQuestBook')
+                .body("textures/ui/QuestBackgrounds/QuestinAintEasy")
+                .button(63, '§l§4Back', [], 'textures/ui/QuestIcons/back', 1, 0)
+                .button(94, '§l§6Refresh Milestones', [], 'textures/ui/refresh_light');
 
-            let slot = 10;
+            const buttonToMilestoneMap = [];
+            let buttonIndex = 2; // starts at to as we have the back and refesh button 
+
             for (const milestone of visibleMilestones) {
-            
-                // is the milestone active 
+                let x = 1;
+                // is the milestone active
                 const isActivated = await MilestoneHandler.isActivated(player, milestone.id);
 
                 // Skip non-activated milestones in display (unless they have no activation requirements)
                 if (!isActivated && milestone.options?.activatedBy?.length > 0) {
-                    continue;
+                    x=99;
                 }
 
                 // get players progress for the milestone
-                const progress = await MilestoneHandler.getPlayerProgress(player, milestone.id);                
+                const progress = await MilestoneHandler.getPlayerProgress(player, milestone.id);
                 // have the prereqs been met
                 const prereqsMet = await MilestoneHandler.checkPrerequisitesEfficient(player, milestone, progress);
 
-                const currentTier = milestone.collections.find(c => c.tier === progress.currentTier);
+                let displayStatus = '';
+                const loreLines = [
+                    `§7${milestone.description}`,
+                    ''
+                ];
+                let buttonColor = '§7'; // Default color
 
-                // Calculate overall tier progress based on all requirements
-                const requirementProgress = currentTier.requirements.map(requirement => {
-                    const requirementProgress = progress.requirements.find(r => r.itemId === requirement.itemId);
-                    return {
-                        current: requirementProgress?.currentCount || 0,
-                        target: requirement.amount,
-                        type: requirement.type,
-                        itemId: requirement.itemId,
-                        percentage: Math.min(100, (requirementProgress?.currentCount || 0) / requirement.amount * 100)
-                    };
-                });
-
-                //const requirement = currentTier.requirements[0];
-
-                // Use the stored count from milestone progress
-                //const currentProgress = progress.currentCount;
-
-                // Calculate percentage for progress bar
-                //const percentage = Math.min(100, (currentProgress / requirement.amount) * 100);
-                //const progressBar = this.createProgressBar(percentage);
-
-                // Calculate overall percentage as average of all requirements
-                const overallPercentage = requirementProgress.reduce((sum, req) => sum + req.percentage, 0) / requirementProgress.length;
-                const progressBar = this.createProgressBar(overallPercentage);
-
-                let displayStatus = prereqsMet ? '§7In Progress' : '§c Prerequisites Required';
                 if (progress.completed) {
+                    // --- Handle Completed Milestones ---
                     if (milestone.options?.repeatable?.enabled) {
                         const cooldownMinutes = milestone.options.repeatable.cooldown;
-                        const timeSinceCompletion = (Date.now() - progress.lastCompleted) / (1000 * 60);
+                        const lastCompleted = progress.lastCompleted || 0; // Ensure lastCompleted exists
+                        const timeSinceCompletion = (Date.now() - lastCompleted) / (1000 * 60);
                         if (timeSinceCompletion < cooldownMinutes) {
                             displayStatus = `§eCooldown: ${Math.ceil(cooldownMinutes - timeSinceCompletion)}m`;
+                            buttonColor = '§e';
                         } else {
                             displayStatus = '§aReady to Repeat';
+                            buttonColor = '§a';
                         }
                     } else {
                         displayStatus = '§a✔ Completed';
+                        buttonColor = '§a';
                     }
-                }
-
-                const loreLines = [
-                    `§7${milestone.description}`,
-                    '',
-                    `§7Status: ${displayStatus}`
-                ];
-
-                if (!prereqsMet && milestone.options?.prerequisites) {
+                    loreLines.push(`§7Status: ${displayStatus}`);
                     loreLines.push(
                         '',
-                        '§cPrerequisites Required:'
+                        `§7Total Tiers: §f${milestone.collections.length}`,
+                        milestone.options?.repeatable?.enabled ? '§6↻ Repeatable' : ''
                     );
-                    // Get display names for all prerequisites
-                    for (const prereq of milestone.options.prerequisites) {
-                        const displayName = await this.getPrerequisiteDisplayName(prereq.id);
-                        loreLines.push(`§7- ${displayName}`);
-                    }
-                }
 
-                if (prereqsMet && (!progress.completed || milestone.options?.repeatable?.enabled)) {
-                    loreLines.push(
-                        '',
-                        `§7Current Tier: §f${currentTier.displayName}`,
-                        '',
-                        '§7Overall Progress:',
-                        progressBar,
-                        '',
-                        '§7Requirements Progress:'
-                    );
-    
-                    // Add individual requirement progress
-                    for (let i = 0; i < currentTier.requirements.length; i++) {
-                        const requirement = currentTier.requirements[i];
-                        const requirementProgress = progress.requirements[i];
-                        const { current, target, percentage, displayName } = this.getRequirementProgress(requirementProgress, requirement);
-                        
+                } else {
+                    // --- Handle Active/Incomplete Milestones ---
+                    displayStatus = prereqsMet ? '§7In Progress' : '§c Prerequisites Required';
+                    buttonColor = prereqsMet ? '§f' : '§c';
+
+                    // Handle both legacy and new format - get the first current tier
+                    const currentTierNum = progress.currentTiers ? progress.currentTiers[0] : progress.currentTier;
+                    const currentTier = milestone.collections.find(c => c.tier === currentTierNum);
+
+                    // If no current tier exists for an *active* milestone, skip (indicates potential data issue)
+                    if (!currentTier) {
+                         Logger.log(`Milestone ${milestone.id} is active but has no current tier. Progress: ${JSON.stringify(progress)}`, "WARN", "PLAYER_UI");
+                         continue;
+                    }
+
+                    loreLines.push(`§7Status: ${displayStatus}`);
+
+                    if (!prereqsMet && milestone.options?.prerequisites) {
                         loreLines.push(
-                            `§7${displayName}:`,
-                            `§7${current}§7/§f${target}`,
-                            this.createProgressBar(percentage)                            
+                            '',
+                            '§cPrerequisites Required:'
+                        );
+                        // Get display names for all prerequisites
+                        for (const prereq of milestone.options.prerequisites) {
+                            const displayName = await this.getPrerequisiteDisplayName(prereq.id);
+                            loreLines.push(`§7- ${displayName}`);
+                        }
+                    }
+
+                    // Calculate overall tier progress based on all requirements
+                    const requirementProgressData = currentTier.requirements.map(requirement => {
+                        // Match progress data more reliably
+                        const reqProgress = progress.requirements?.find(r =>
+                            r.type === requirement.type &&
+                            (r.itemId ? r.itemId === requirement.itemId : true) &&
+                            (r.category ? r.category === requirement.category : true) &&
+                            (r.event ? r.event === requirement.event : true) // Add event matching if used
+                            // Add other potential identifiers if needed
+                        );
+                        return {
+                            current: reqProgress?.currentCount || 0,
+                            target: requirement.amount,
+                            type: requirement.type,
+                            itemId: requirement.itemId,
+                            category: requirement.category,
+                            event: requirement.event,
+                            percentage: Math.min(100, ((reqProgress?.currentCount || 0) / requirement.amount) * 100)
+                        };
+                    });
+
+
+                    // Calculate overall percentage as average of all requirements
+                    const overallPercentage = requirementProgressData.length > 0
+                        ? requirementProgressData.reduce((sum, req) => sum + req.percentage, 0) / requirementProgressData.length
+                        : 0; // Avoid division by zero
+                    const progressBar = this.createProgressBar(overallPercentage);
+
+
+                    if (prereqsMet) {
+                         // Display multi-tier information if present
+                        if (progress.currentTiers && progress.currentTiers.length > 1) {
+                            loreLines.push(
+                                '',
+                                `§7Active Tiers: §f${progress.currentTiers.length}`,
+                                `§7Current Tier: §f${currentTier.displayName}`, // Still show the primary current tier
+                                '',
+                                '§7Overall Progress:'
+                            );
+
+                            // List all active tiers
+                            progress.currentTiers.forEach(tierNum => {
+                                const tier = milestone.collections.find(c => c.tier === tierNum);
+                                if (tier) {
+                                    loreLines.push(`§7• §f${tier.displayName}`);
+                                }
+                            });
+                        } else {
+                            loreLines.push(
+                                '',
+                                `§7Current Tier: §f${currentTier.displayName}`,
+                                '',
+                                '§7Overall Progress:'
+                            );
+                        }
+
+                        loreLines.push(
+                            progressBar,
+                            '',
+                            '§7Requirements Progress:'
                         );
 
-                        if (i < currentTier.requirements.length - 1) {
-                            loreLines.push('');
-                        }
-                    }                        
-                }
+                        // Add individual requirement progress
+                        for (let i = 0; i < currentTier.requirements.length; i++) {
+                            const requirement = currentTier.requirements[i];
+                            // Find the matching progress data again (or use requirementProgressData calculated earlier)
+                             const reqProgress = requirementProgressData.find(rpd =>
+                                rpd.type === requirement.type &&
+                                (rpd.itemId ? rpd.itemId === requirement.itemId : true) &&
+                                (rpd.category ? rpd.category === requirement.category : true) &&
+                                (rpd.event ? rpd.event === requirement.event : true)
+                            );
 
-                loreLines.push(
-                    '',
-                    `§7Total Tiers: §f${milestone.collections.length}`,
-                    milestone.options?.repeatable?.enabled ? '§6↻ Repeatable' : ''
-                );
+                            if (reqProgress) {
+                                const { current, target, percentage, displayName } = this.getRequirementProgress(reqProgress, requirement); // Pass the matched progress data
+
+                                loreLines.push(
+                                    `§7${displayName}:`,
+                                    `§7${current}§7/§f${target}`,
+                                    this.createProgressBar(percentage)
+                                );
+
+                                if (i < currentTier.requirements.length - 1) {
+                                    loreLines.push('');
+                                }
+                            } else {
+                                 // Handle case where progress data for a requirement wasn't found
+                                const displayName = this.getRequirementDisplayName(requirement);
+                                loreLines.push(
+                                    `§7${displayName}:`,
+                                    `§70§7/§f${StatValueFormatter.formatStatValue(requirement.amount, requirement.type)}`,
+                                    this.createProgressBar(0)
+                                );
+                                 if (i < currentTier.requirements.length - 1) {
+                                    loreLines.push('');
+                                }
+                            }
+                        }
+                    } // end if (prereqsMet)
+
+                    loreLines.push(
+                        '',
+                        `§7Total Tiers: §f${milestone.collections.length}`,
+                        milestone.options?.repeatable?.enabled ? '§6↻ Repeatable' : ''
+                    );
+                } // end else (if not completed)
 
                 menu.button(
                     milestone.slot,
-                    `${progress.completed ? '§a' : prereqsMet ? '§f' : '§c'}${milestone.displayName}`,
+                    `${buttonColor}${milestone.displayName}`, // Use determined button color
                     loreLines,
                     milestone.icon,
-                    1
+                    x // Default enchantment level
                 );
-                slot++;
+                // Store the milestone reference for this button index
+                                buttonToMilestoneMap[buttonIndex] = milestone;
+                buttonIndex++;
             }
 
 
@@ -1383,19 +1557,21 @@ export class PlayerMenu {
                 return;
             }
 
-            if (response.selection === 3) {                                    
+            if (response.selection === 1) {
                 await MilestoneHandler.checkAllActiveMilestones(player);
+                 await this.showMilestonesMenu(player); // Refresh menu after check
+                 return;
             }
 
-            // Show details for selected milestone
-            if (response.selection !== 0 && response.selection !== 3) {
-                // Find the milestone that uses this slot
-                const selectedMilestone = visibleMilestones.find(m => m.slot === response.selection);
-                if (selectedMilestone) {
-                    await this.showMilestoneDetails(player, selectedMilestone);
-                }
+            // Show details for selected milestone using the slot as the key
+            const selectedMilestone = buttonToMilestoneMap[response.selection];
+
+            if (selectedMilestone) {
+                await this.showMilestoneDetails(player, selectedMilestone);
+            } else {
+                 Logger.log(`No milestone found for selected slot: ${response.selection}`, "WARN", "PLAYER_UI");
+                await this.showMilestonesMenu(player); // Go back to the milestones menu if selection is invalid
             }
-            
 
         } catch (error) {
             Logger.log(`Error in milestones menu: ${error}`, "ERROR", "PLAYER_UI");
@@ -1405,15 +1581,17 @@ export class PlayerMenu {
 
     static async showMilestoneDetails(player, milestone) {
         try {
+
+            player.sendMessage(milestone.id);
             // Get the complete milestone progress data for this player
             const progress = await MilestoneHandler.getPlayerProgress(player, milestone.id);
             const prereqsMet = await MilestoneHandler.checkPrerequisitesEfficient(player, milestone, progress);
 
-            const menu = new ChestFormData('90')               
-                .title(milestone.displayName)
-                .background(milestone.background)
+            const menu = new SimpleQuestBook()               
+                .title('NewQuestBook')
+                .body(milestone.background)
                 //.title(milestone.displayName)                  
-                .button(0, '§l§4Back', [], 'textures/ui/QuestIcons/back');
+                .button(63, '§l§4Back', [], 'textures/ui/QuestIcons/back');
 
             // If there are prerequisites, show them at the top of the details
             if (milestone.options?.prerequisites?.length > 0) {
@@ -1437,156 +1615,163 @@ export class PlayerMenu {
                 );
             }
 
-            //let slot = 10;
-            for (const collection of milestone.collections) {                
-                const isCurrentTier = collection.tier === progress.currentTier;
-                const isCompletedTier = collection.tier < progress.currentTier || progress.completed;
-                //const slotOffset = collection.slotOffset ?? 0;
 
-                // Handle milestone reference type 
-            if (collection.type === 'milestone_reference') {
-                const refData = collection.reference;
-                const referencedMilestone = MilestoneStorage.getMilestone(refData.milestoneId);
-                
-                if (referencedMilestone) {
-                    const isActivated = await MilestoneHandler.isActivated(player, refData.milestoneId);
-                    const refProgress = await MilestoneHandler.getPlayerProgress(player, refData.milestoneId);
-                    
-                    // Customize lore for referenced milestones
-                    const loreLines = [
-                        `§7${collection.description}`,
-                        '',
-                        `§7Unlocks: §f${referencedMilestone.displayName}`,                        
-                        ''
-                    ];
-                    
-                    // Show reference milestone progress if activated
-                    if (isActivated) {
-                        const completedTiers = refProgress.currentTier - 1 + (refProgress.completed ? 1 : 0);
-                        const totalTiers = referencedMilestone.collections.length;
-                        const refPercentage = (completedTiers / totalTiers) * 100;
+             // Handle multiple active tiers 
+                const currentTiers = progress.currentTiers || [progress.currentTier];
+                const completedTiers = progress.completedTiers || {};
+
+                for (const collection of milestone.collections) {
+                    const isCurrentTier = currentTiers.includes(collection.tier);
+                    const isCompletedTier = completedTiers[collection.tier] || false;
+
+                    // Handle milestone reference type 
+                    if (collection.type === 'milestone_reference') {
+                        const refData = collection.reference;
+                        const referencedMilestone = MilestoneStorage.getMilestone(refData.milestoneId);
                         
-                        loreLines.push(
-                            `§7Progress: §f${completedTiers}/${totalTiers} tiers`,
-                            this.createProgressBar(refPercentage),
-                            '',
-                            `§7Status: ${refProgress.completed ? '§a Completed' : '§6 In Progress'}`
-                        );
-                        
-                        if (isCurrentTier && refData.mode === 'sequential' && !refProgress.completed) {
+                        if (referencedMilestone) {
+                            const isActivated = await MilestoneHandler.isActivated(player, refData.milestoneId);
+                            const refProgress = await MilestoneHandler.getPlayerProgress(player, refData.milestoneId);
+                            
+                            // Customize lore for referenced milestones
+                            const loreLines = [
+                                `§7${collection.description}`,
+                                '',
+                                `§7Unlocks: §f${referencedMilestone.displayName}`,                        
+                                ''
+                            ];
+                            
+                            // Show reference milestone progress if activated
+                            if (isActivated) {
+                                // Handle both legacy and new format for referenced milestone
+                                const refCurrentTiers = refProgress.currentTiers || [refProgress.currentTier];
+                                const completedTiersCount = Object.keys(refProgress.completedTiers || {}).length;
+                                const totalTiers = referencedMilestone.collections.length;
+                                const refPercentage = (completedTiersCount / totalTiers) * 100;
+                                
+                                loreLines.push(
+                                    `§7Progress: §f${completedTiersCount}/${totalTiers} tiers`,
+                                    this.createProgressBar(refPercentage),
+                                    '',
+                                    `§7Status: ${refProgress.completed ? '§a Completed' : '§6 In Progress'}`
+                                );
+                                
+                                if (isCurrentTier && refData.mode === 'sequential' && !refProgress.completed) {
+                                    loreLines.push(
+                                        '',
+                                        '§c Complete this side quest to continue'
+                                    );
+                                }
+                            }                     
+                            // Add navigation hint
                             loreLines.push(
                                 '',
-                                '§c Complete this side quest to continue'
+                                '§7Click to view detailed progress'
+                            );
+                                            
+                            // Show status indicator
+                            if (isCompletedTier) {
+                                loreLines.push('', '§a Activated');
+                            } else if (isCurrentTier) {
+                                if (prereqsMet) {
+                                    loreLines.push('', '§6 Ready to Start');
+                                } else {
+                                    loreLines.push('', '§c Prerequisites Required');
+                                }
+                            } else {
+                                loreLines.push('', '§7Locked');
+                            }
+                            
+                            menu.button(
+                                collection.slot,
+                                `${isCompletedTier ? '§a' : isCurrentTier ? '§6' : '§7'}${collection.displayName}`,
+                                loreLines,
+                                isCompletedTier ? 'textures/ui/check' : collection.icon,
+                                1
+                            );
+                        } else {
+                            // Handle case where referenced milestone doesn't exist
+                            menu.button(
+                                collection.slot,
+                                `§c${collection.displayName}`,
+                                [
+                                    '§cError: Referenced milestone not found',
+                                    `§8ID: ${refData.milestoneId}`
+                                ],
+                                'textures/ui/error',
+                                1
                             );
                         }
-                    }                     
-                    // Add navigation hint
-                    loreLines.push(
-                        '',
-                        '§7Click to view detailed progress'
-                    );
-                                       
+                    } else { 
+                        const loreLines = [
+                            `§7${collection.description}`,
+                            ''
+                        ];
 
-                    // Show status indicator
-                    if (isCompletedTier) {
-                        loreLines.push('', '§a Activated');
-                    } else if (isCurrentTier) {
-                        if (prereqsMet) {
-                            loreLines.push('', '§6 Ready to Start');
-                        } else {
-                            loreLines.push('', '§c Prerequisites Required');
+                        if (isCurrentTier) {
+                            loreLines.push('§7⨠ Requirements:');
+                            
+                            // Show each requirement's progress
+                            collection.requirements.forEach((requirement, index) => {
+                                const requirementProgress = progress.requirements[index];
+                                const { current, target, percentage, displayName } = this.getRequirementProgress(requirementProgress, requirement);
+
+                                loreLines.push(
+                                    `§7${displayName}:`,
+                                    `§7${current}§7/§f${target}`,
+                                    this.createProgressBar(percentage),
+                                    ''
+                                );
+                            });
+                            
+                            // If prerequisites aren't met, show warning
+                            if (!prereqsMet) {
+                                loreLines.push(
+                                    '§c⚠ Progress Blocked',
+                                    '§7Complete prerequisites first!',
+                                    ''
+                                );
+                            }
                         }
-                    } else {
-                        loreLines.push('', '§7Locked');
-                    }
-                    
-                    menu.button(
-                        collection.slot,
-                        `${isCompletedTier ? '§a' : isCurrentTier ? '§6' : '§7'}${collection.displayName}`,
-                        loreLines,
-                        isCompletedTier ? 'textures/ui/check' : collection.icon,
-                        1
-                    );
-                } else {
-                    // Handle case where referenced milestone doesn't exist
-                    menu.button(
-                        collection.slot,
-                        `§c${collection.displayName}`,
-                        [
-                            '§cError: Referenced milestone not found',
-                            `§8ID: ${refData.milestoneId}`
-                        ],
-                        'textures/ui/error',
-                        1
-                    );
-                }
-            } else 
-            { 
-                const loreLines = [
-                    `§7${collection.description}`,
-                    ''
-                ];
 
-                if (isCurrentTier) {
-                    loreLines.push('§7Requirements:');
-                    
-                    // Show each requirement's progress
-                    collection.requirements.forEach((requirement, index) => {
-                        const requirementProgress = progress.requirements[index];
-                        const { current, target, percentage, displayName } = this.getRequirementProgress(requirementProgress, requirement);
+                        // Show rewards
+                        loreLines.push('§7⨠ Rewards:');
+                        collection.rewards.forEach(reward => {
+                            if (reward.type === 'point') {
+                                loreLines.push(`§7- §f${reward.amount} points`);
+                            } else if (reward.type === 'command') {
+                                loreLines.push(`§7- §f${reward.command}`);
+                            }
+                        });
 
-                        loreLines.push(
-                            `§7${displayName}:`,
-                            `§7${current}§7/§f${target}`,
-                            this.createProgressBar(percentage),
-                            ''
-                        );
-                    });
-                    
-                    // If prerequisites aren't met, show warning
-                    if (!prereqsMet) {
-                        loreLines.push(
-                            '§c⚠ Progress Blocked',
-                            '§7Complete prerequisites first!',
-                            ''
+                        let x = 1;
+
+                        // Show status indicator
+                        if (isCompletedTier) {
+                            loreLines.push('', '§a Completed');
+                            x = 66;
+                        } else if (isCurrentTier) {
+                            if (prereqsMet) {
+                                loreLines.push('', '§6 In Progress');
+                                x = 1;
+                            } else {
+                                loreLines.push('', '§c Prerequisites Required');
+                            }
+                        } else {
+                            loreLines.push('', '§7Locked');
+                            x = 99;
+                        }
+
+                        menu.button(
+                            collection.slot,
+                            `${isCompletedTier ? '§a' : isCurrentTier ? '§6' : '§7'}${collection.displayName}`,
+                            loreLines,
+                            collection.icon,
+                            x
                         );
                     }
                 }
 
-                // Show rewards
-                loreLines.push('§7Rewards:');
-                collection.rewards.forEach(reward => {
-                    if (reward.type === 'point') {
-                        loreLines.push(`§7- §f${reward.amount} points`);
-                    } else if (reward.type === 'command') {
-                        loreLines.push(`§7- §f${reward.command}`);
-                    }
-                });
-
-                // Show status indicator
-                if (isCompletedTier) {
-                    loreLines.push('', '§a Completed');
-                } else if (isCurrentTier) {
-                    if (prereqsMet) {
-                        loreLines.push('', '§6 In Progress');
-                    } else {
-                        loreLines.push('', '§c Prerequisites Required');
-                    }
-                } else {
-                    loreLines.push('', '§7Locked');
-                }
-
-                menu.button(
-                    collection.slot,
-                    `${isCompletedTier ? '§a' : isCurrentTier ? '§6' : '§7'}${collection.displayName}`,
-                    loreLines,
-                    isCompletedTier ? 'textures/ui/check' : collection.icon,
-                    1
-                );
-                //slot++;
-            }
-
-            }
 
             const response = await menu.show(player);
 
@@ -1622,23 +1807,25 @@ export class PlayerMenu {
                 return 'Any Block Broken';
             case 'anyMob':
                 return 'Any Mob Killed';
+            case 'onBreakAnyInCategory':
+                return 'Break any in the category';
             default:
                 // For specific items/blocks, clean up the minecraft:item_name format
                 return requirement.itemId ? requirement.itemId.split(':')[1].replace(/_/g, ' ') : requirement.type;
         }
     }
     
-    static getRequirementProgress(requirementProgress, requirement) {
-        const currentCount = requirementProgress?.currentCount || 0;
-        const percentage = Math.min(100, (currentCount / requirement.amount) * 100);
-        const formattedCurrentCount = StatValueFormatter.formatStatValue(currentCount, requirement.type);
-        const formattedTargetAmount = StatValueFormatter.formatStatValue(requirement.amount, requirement.type);
-    
+    static getRequirementProgress(requirementProgressData, requirementDefinition) {
+        const currentCount = requirementProgressData?.currentCount || 0; // Use current from passed data
+        const percentage = requirementProgressData?.percentage || 0; // Use percentage from passed data
+        const formattedCurrentCount = StatValueFormatter.formatStatValue(currentCount, requirementDefinition.type);
+        const formattedTargetAmount = StatValueFormatter.formatStatValue(requirementDefinition.amount, requirementDefinition.type);
+
         return {
             current: formattedCurrentCount,
             target: formattedTargetAmount,
             percentage,
-            displayName: this.getRequirementDisplayName(requirement)
+            displayName: this.getRequirementDisplayName(requirementDefinition)
         };
     }
 

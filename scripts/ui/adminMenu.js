@@ -23,7 +23,7 @@ export class AdminMenu {
         try {
             const collections = CollectionManager.getCollections();
             const enabledCount = collections.filter(c => c.enabled).length;
-            const debugStatus = Logger.isDebugEnabled() ? '§qEnabled' : '§cDisabled';
+            const debugStatus = Logger.isGlobalDebugEnabled() ? '§qEnabled' : '§cDisabled';
             const milestoneStatus = MilestoneManager.isProgressCheckingEnabled() ? '§qEnabled' : '§cDisabled';
 
             const menu = new ActionFormData()
@@ -37,7 +37,7 @@ export class AdminMenu {
                 .button("Create Collection", "textures/ui/gear" )
                 .button("Storage Stats", "textures/ui/loot_box.png" )
                 .button("System Management", "textures/ui/debug_glyph_color.png" )
-                .button("Toggle Debug", "textures/ui/buttonNew.png")
+                .button("Debug Settings", "textures/ui/buttonNew.png")
                 .button("Toggle Milestones", "textures/ui/timer.png")
                 .button("Close", "textures/ui/redX1" );
 
@@ -59,9 +59,7 @@ export class AdminMenu {
                     await this.showSystemManagement(player);
                     break;
                 case 4:
-                    const debugEnabled = Logger.toggleDebug();
-                    player.sendMessage(`§7Debug logging ${debugEnabled ? '§qenabled' : '§cdisabled'}`);
-                    await this.showMainMenu(player);
+                    await this.showDebugSettings(player);
                     break;
                 case 5:
                     const milestonesEnabled = MilestoneManager.toggleProgressChecking();
@@ -70,7 +68,7 @@ export class AdminMenu {
                     break;
             }
         } catch (error) {
-            Logger.log(`Error in admin main menu: ${error}`, "ERROR", "ADMIN_UI");
+            Logger.log(`Error in admin main menu: ${error}`, "DEBUG", "ADMIN_UI");
         }
     }
 
@@ -890,241 +888,6 @@ export class AdminMenu {
         }
     }
 
-    // static async showDynamicProperties(player) {
-    //     try {
-    //         // Get database instances
-    //         const databases = {
-    //             Collections: new JsonDatabase("skychievments_collections"),
-    //             Groups: new JsonDatabase("skychievments_groups"),
-    //             Logger: new JsonDatabase("skychievments_logger"),
-    //             Progress: new JsonDatabase("skychievments_progress"),
-    //             MobKills: new JsonDatabase("skychievments_mob_kills"),
-    //             Milestones: new JsonDatabase("skychievments_milestones"),
-    //             MilestoneProgress: new JsonDatabase("skychievments_milestone_progress"),
-    //             // player stats
-    //             Stats_Custom: new JsonDatabase("skychievments_stats_QAE_custom"),
-    //             Stats_Placed: new JsonDatabase("skychievments_stats_QAE_placed"),
-    //             Stats_Mined: new JsonDatabase("skychievments_stats_QAE_mined"),
-    //             Stats_Killed: new JsonDatabase("skychievments_stats_QAE_killed"),
-    //             Stats_KilledBy: new JsonDatabase("skychievments_stats_QAE_killed_by")
-    //         };
-    
-    //         // Create initial selection menu
-    //         const mainMenu = new ActionFormData()
-    //             .title("§b§lSystem Data Viewer")
-    //             .body("§7Choose what data to view:")
-    //             .button("View Databases\n§8Browse system databases")
-    //             .button("View Online Players\n§8See player properties")
-    //             .button("Back\n§8Return to system management");
-    
-    //         const mainResponse = await mainMenu.show(player);
-            
-    //         if (mainResponse.canceled || mainResponse.selection === 2) {
-    //             await this.showSystemManagement(player);
-    //             return;
-    //         }
-    
-    //         if (mainResponse.selection === 0) { // Show world database viewer
-
-    //             const dbSelector = new ChestFormData('54')
-    //                 .title('Database Manager');
-    
-    //             dbSelector.button(0, '§l§4Back', ['', '§r§cReturn to System Management'], 'textures/ui/arrow_l_default');
-    
-    //             let slot = 9;
-    //             for (const [name, db] of Object.entries(databases)) {
-    //                 const size = db.size;
-    //                 const isValid = db.isValid();
-    //                 const status = isValid ? '§aValid' : '§cInvalid';
-                    
-    //                 dbSelector.button(
-    //                     slot, 
-    //                     `§l${name} Database`,
-    //                     [
-    //                         `§7Status: ${status}`,
-    //                         `§7Entries: §f${size}`,
-    //                         '',
-    //                         '§eClick to view contents'
-    //                     ],
-    //                     'textures/ui/debug_glyph_color',
-    //                     1
-    //                 );
-    //                 slot++;
-    //             }
-    
-    //             const dbResponse = await dbSelector.show(player);
-                
-    //             if (dbResponse.canceled || dbResponse.selection === 0) {
-    //                 await this.showDynamicProperties(player);
-    //                 return;
-    //             }
-    
-    //             // Show selected database contents
-    //             const selectedDbName = Object.keys(databases)[dbResponse.selection - 9];
-    //             const selectedDb = databases[selectedDbName];
-    
-    //             const menu = new ActionFormData()
-    //                 .title(`§b§l${selectedDbName} Database Contents`);
-    
-    //             let contentText = `§7Database: §f${selectedDbName}\n`;
-    //             contentText += `§7Status: ${selectedDb.isValid() ? '§aValid' : '§cInvalid'}\n`;
-    //             contentText += `§7Entries: §f${selectedDb.size}\n\n`;
-    
-    //             if (selectedDb.size > 0) {
-    //                 selectedDb.forEach((value, key) => {
-    //                     const valueType = typeof value;
-    //                     let displayValue;
-                        
-    //                     switch (valueType) {
-    //                         case 'object':
-    //                             if (value === null) {
-    //                                 displayValue = '§cnull';
-    //                             } else if (Array.isArray(value)) {
-    //                                 displayValue = `§e[Array with ${value.length} items]`;
-    //                             } else {
-    //                                 displayValue = '§e' + JSON.stringify(value);
-    //                             }
-    //                             break;
-    //                         case 'string':
-    //                             if (value.length > 50) {
-    //                                 displayValue = `§a"${value.substring(0, 50)}..."§7 (${value.length} chars)`;
-    //                             } else {
-    //                                 displayValue = `§a"${value}"`;
-    //                             }
-    //                             break;
-    //                         case 'number':
-    //                             displayValue = `§b${value}`;
-    //                             break;
-    //                         case 'boolean':
-    //                             displayValue = value ? '§2true' : '§4false';
-    //                             break;
-    //                         default:
-    //                             displayValue = `§7${value}`;
-    //                     }
-                        
-    //                     contentText += `\n§6${key}\n`;
-    //                     contentText += `§7Type: §e${valueType}\n`;
-    //                     contentText += `§7Value: ${displayValue}\n`;
-    //                 });
-    //             } else {
-    //                 contentText += "\n§8No entries in database.";
-    //             }
-    
-    //             menu.body(contentText)
-    //                 .button("View Another Database\n§8Select a different database")
-    //                 .button("Back to Main Menu\n§8Return to data viewer");
-    
-    //             const response = await menu.show(player);
-                
-    //             if (!response.canceled) {
-    //                 switch (response.selection) {
-    //                     case 0:
-    //                         await this.showDynamicProperties(player);
-    //                         break;
-    //                     case 1:
-    //                         await this.showDynamicProperties(player);
-    //                         break;
-    //                 }
-    //             }
-    //         } else if (mainResponse.selection === 1) { //online players viewer
-
-    //             const players = world.getAllPlayers();
-                
-    //             const playerSelector = new ActionFormData()
-    //                 .title("§b§lOnline Players")
-    //                 .body("§7Select a player to view their dynamic properties:");
-    
-    //             // Add button for each online player
-    //             for (const onlinePlayer of players) {
-    //                 playerSelector.button(
-    //                     `${onlinePlayer.name}\n§8Click to view properties`, 
-    //                     "textures/ui/icon_steve"
-    //                 );
-    //             }
-    
-    //             playerSelector.button("Back\n§8Return to data viewer");
-    
-    //             const playerResponse = await playerSelector.show(player);
-                
-    //             if (playerResponse.canceled || playerResponse.selection === players.length) {
-    //                 await this.showDynamicProperties(player);
-    //                 return;
-    //             }
-    
-    //             // Show selected player's properties
-    //             const selectedPlayer = players[playerResponse.selection];
-                
-    //             let propsText = `§7Dynamic Properties for §f${selectedPlayer.name}§7:\n\n`;
-                
-    //             // Get all properties
-    //             const properties = selectedPlayer.getDynamicPropertyIds();
-                
-    //             if (properties.length > 0) {
-    //                 for (const propId of properties) {
-    //                     const value = selectedPlayer.getDynamicProperty(propId);
-    //                     const valueType = typeof value;
-    //                     let displayValue;
-                        
-    //                     switch (valueType) {
-    //                         case 'object':
-    //                             if (value === null) {
-    //                                 displayValue = '§cnull';
-    //                             } else if (Array.isArray(value)) {
-    //                                 displayValue = `§e[Array with ${value.length} items]`;
-    //                             } else {
-    //                                 displayValue = '§e' + JSON.stringify(value);
-    //                             }
-    //                             break;
-    //                         case 'string':
-    //                             displayValue = `§a"${value}"`;
-    //                             break;
-    //                         case 'number':
-    //                             displayValue = `§b${value}`;
-    //                             break;
-    //                         case 'boolean':
-    //                             displayValue = value ? '§2true' : '§4false';
-    //                             break;
-    //                         default:
-    //                             displayValue = `§7${value}`;
-    //                     }
-                        
-    //                     propsText += `§6${propId}\n`;
-    //                     propsText += `§7Type: §e${valueType}\n`;
-    //                     propsText += `§7Value: ${displayValue}\n\n`;
-    //                 }
-    //             } else {
-    //                 propsText += "§8No dynamic properties found for this player.";
-    //             }
-    
-    //             const propsMenu = new ActionFormData()
-    //                 .title(`§b§l${selectedPlayer.name}'s Properties`)
-    //                 .body(propsText)
-    //                 .button("View Another Player\n§8Select different player")
-    //                 .button("Back to Main Menu\n§8Return to data viewer");
-    
-    //             const propsResponse = await propsMenu.show(player);
-                
-    //             if (!propsResponse.canceled) {
-    //                 switch (propsResponse.selection) {
-    //                     case 0:
-    //                         await this.showDynamicProperties(player);
-    //                         break;
-    //                     case 1:
-    //                         await this.showDynamicProperties(player);
-    //                         break;
-    //                 }
-    //             }
-    //         }
-    
-    //     } catch (error) {
-    //         Logger.log(`Error showing system data: ${error}`, "ERROR", "ADMIN_UI");
-    //         player.sendMessage('§c§lAn error occurred while showing system data.');
-    //         await this.showSystemManagement(player);
-    //     }
-    // }
-
-    // In AdminMenu class:
-
     static async showDynamicProperties(player) {
         try {
             Logger.log(`Showing Game Properies`, "DEBUG", "ADMIN_UI");
@@ -1427,7 +1190,8 @@ export class AdminMenu {
                 'Block Placement': 'QAE_placed',
                 'Block Mining': 'QAE_mined',
                 'Entity Kills': 'QAE_killed',
-                'Deaths By': 'QAE_killed_by'
+                'Deaths By': 'QAE_killed_by',
+                'Tools Broken': 'QAE:tool_broken'
             };
 
             const menu = new ChestFormData('90')
@@ -1548,6 +1312,94 @@ export class AdminMenu {
             player.sendMessage('§cAn error occurred while viewing statistics.');
         }
     }
- 
 
+    /**
+     * Displays debug settings menu
+     * @param {*} player 
+     */
+    static async showDebugSettings(player) {
+        try {
+            // Define your components that can have debug enabled
+            const components = {
+                'GENERAL': 'General System Messages',
+                'ADMIN_UI': 'Admin Interface',
+                'COLLECTION': 'Collection Management',
+                'MILESTONE': 'Milestone System',
+                'DATABASE': 'Database Operations',
+                'ITEM_DATABASE': 'Item Database',
+                'STATISTICS': 'Player Statistics',
+                'MINED_STATISTICS' : 'Mined Stats',
+                'PROGRESS': 'Progress Tracking',
+                'REWARDS': 'Reward System',
+                'TIMER': 'Time Manager',
+                'REQUIREMENT_CHECKER' : 'Checking Requirements',
+                'TIER_CHECKING': 'Tier Checking'
+            };
+
+            const menu = new ActionFormData()
+                .title("§b§lDebug Settings")
+                .body(
+                    "§7Configure debug logging for different components:\n\n" +
+                    `§7Global Debug: ${Logger.isGlobalDebugEnabled() ? '§aEnabled' : '§cDisabled'}\n\n` +
+                    "§7Component Debug Status:\n" +
+                    Object.entries(components)
+                        .map(([id, name]) => 
+                            `${name}: ${Logger.isComponentDebugEnabled(id) ? '§aEnabled' : '§cDisabled'}`
+                        )
+                        .join('\n')
+                );
+
+            // Add Global Debug toggle
+            menu.button(
+                `${Logger.isGlobalDebugEnabled() ? '§cDisable' : '§aEnable'} Global Debug\n` +
+                "§8Affects all components",
+                "textures/ui/debug_glyph_color"
+            );
+
+            // Add component toggles
+            Object.entries(components).forEach(([id, name]) => {
+                const isEnabled = Logger.isComponentDebugEnabled(id);
+                menu.button(
+                    `${isEnabled ? '§cDisable' : '§aEnable'} ${name}\n` +
+                    `§8Component: ${id}`,
+                    "textures/ui/debug_glyph_color"
+                );
+            });
+
+            menu.button("Back\n§8Return to admin menu", "textures/ui/arrow_dark_left_stretch.png");
+
+            const response = await menu.show(player);
+            
+            if (response.canceled || response.selection === Object.keys(components).length + 1) {
+                await this.showMainMenu(player);
+                return;
+            }
+
+            // Handle global debug toggle
+            if (response.selection === 0) {
+                const enabled = Logger.toggleGlobalDebug();
+                player.sendMessage(`§7Global debug ${enabled ? '§aenabled' : '§cdisabled'}`);
+                await this.showDebugSettings(player);
+                return;
+            }
+
+            // Handle component toggles
+            const componentId = Object.keys(components)[response.selection - 1];
+            if (componentId) {
+                const isEnabled = Logger.isComponentDebugEnabled(componentId);
+                if (isEnabled) {
+                    Logger.disableComponentDebug(componentId);
+                    player.sendMessage(`§7Debug disabled for §f${components[componentId]}`);
+                } else {
+                    Logger.enableComponentDebug(componentId);
+                    player.sendMessage(`§7Debug enabled for §f${components[componentId]}`);
+                }
+                await this.showDebugSettings(player);
+            }
+
+        } catch (error) {
+            Logger.log(`Error in debug settings menu: ${error}`, "ERROR", "ADMIN_UI");
+            await this.showMainMenu(player);
+        }
+    }
 }

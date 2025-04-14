@@ -1,12 +1,12 @@
 import { ActionFormData } from '@minecraft/server-ui';
-import { typeIdToDataId, typeIdToID } from './typeIds.js';
+import { typeIdToDataId, typeIdToID } from '../extensions/typeIds.js';
 
 /**
  * Defines the custom block & item IDs for the form.
  * You can reference either a vanilla texture icon, which functions identically to other items...
  * ...or reference a texture path, which removes enchant glint and 3d block render capability.
  */
-const inventory_enabled = true;
+const inventory_enabled = false;
 
 const custom_content = {
 	'custom:item': {
@@ -52,7 +52,7 @@ const defaultBackgrounds = new Map([
 	['336', 'textures/ui/chestUI_336']
   ]);
 
-  class ChestFormData {
+  class QuestBook {
 	#titleText; #buttonArray; #bodyText;
 	constructor(size = 'small') {
 		const sizing = sizes.get(size) ?? ['§c§h§e§s§t§2§7§r', 27];
@@ -177,6 +177,7 @@ const defaultBackgrounds = new Map([
 		this.#buttonArray.forEach(button => {
 			form.button(button[0], button[1]?.toString());
 		});
+		
 		if (!inventory_enabled) return form.show(player);
 		/** @type {Container} */
 		const container = player.getComponent('inventory').container;
@@ -206,4 +207,4 @@ const defaultBackgrounds = new Map([
 	}
 }
 
-export { ChestFormData };
+export { QuestBook };

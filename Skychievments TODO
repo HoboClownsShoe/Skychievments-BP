@@ -3,32 +3,27 @@ Effiecency is the KEY!!
 keeping stats every tick for every player will eventually slow everything down
 
 
+
+update the "In The Beginning" image to have 
+
+
+
+
+
+
+
+
+
+
 add reward for giving XP amount and XP level 
 
 anyInCategory  ->  onBreakAnyInCategory
-
-
-
 
 add milestone requirements -> timePassedSince accepts an event and amount in minutes
     used for
         last death,
         since first spawn
         since last sleep
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 Quests are a set of randomly generated tasks between 2 and 4

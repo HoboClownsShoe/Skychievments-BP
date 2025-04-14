@@ -47,7 +47,9 @@ class StatisticsManager {
                 'QAE:placed',
                 'QAE:mined',
                 'QAE:killed',
-                'QAE:killed_by'
+                'QAE:killed_by',
+                'QAE:tool_broken',
+                "QAE:food_eaten"
             ];
             
             const allStats = new Map();
@@ -169,6 +171,9 @@ var PlayerStatistics = class {
         this.blockPlaced = new PlacedStatistics(this.player);
         this.entityKilled = new KilledStatistics(this.player);
         this.entityKilledBy = new KilledByStatistics(this.player);
+        this.toolBroken = new ToolStatistics(this.player);
+        this.thingsEaten = new EatenStatistics(this.player);
+        this.dimensionChange = new DimensionStatistics(this.player);
     }
 };
 
@@ -189,17 +194,17 @@ var Statistics = class {
     }
 
     setStatistic(statistic, value) {
-        // if (typeof value !== "number") 
-        //     throw new TypeError("Statistic value must be a number");
-        // this.player.setDynamicProperty(this.typeId + "/" + statistic, value);
         try {
             if (typeof value !== "number") {
                 throw new TypeError("Statistic value must be a number");
             }
             const stats = this.getPlayerStats();
             stats[statistic] = value;
-            Logger.log(`Setting statistic ${statistic} to ${value}`, "DEBUG", "STATISTICS");
-
+            if (statistic !== "minecraft:play_time" &&
+                statistic !== "minecraft:time_since_death" &&
+                statistic !== "minecraft:time_since_rest") {
+                Logger.log(`Getting statistic ${statistic}: ${value}`, "DEBUG", "STATISTICS");
+            }
             this.savePlayerStats(stats);
         } catch (error) {
             Logger.log(`Error setting statistic ${statistic}: ${error}`, "ERROR", "STATISTICS");
@@ -213,29 +218,31 @@ var Statistics = class {
         try {
             const stats = this.getPlayerStats();
             let value = stats[statistic] || 0;
-            Logger.log(`Getting statistic ${statistic}: ${value}`, "DEBUG", "STATISTICS");
+            if (statistic !== "minecraft:play_time" &&
+                statistic !== "minecraft:time_since_death" &&
+                statistic !== "minecraft:time_since_rest") {
+                Logger.log(`Getting statistic ${statistic}: ${value}`, "DEBUG", "STATISTICS");
+            }
 
             return value;
         } catch (error) {
             Logger.log(`Error getting statistic ${statistic}: ${error}`, "ERROR", "STATISTICS");
             return 0;
         }
-        // const value = this.player.getDynamicProperty(this.typeId + "/" + statistic);
-        // if (typeof value === "number") return value;
-        // else return 0;
     }
 
     addStatistic(statistic, value = 1) {
-        // if (typeof value !== "number") throw new TypeError("Statistic value must be a number");
-        // const previousValue = this.getStatistic(statistic);
-        // this.setStatistic(statistic, previousValue + value);
         try {
             if (typeof value !== "number") {
                 throw new TypeError("Statistic value must be a number");
             }
             const currentValue = this.getStatistic(statistic);
             this.setStatistic(statistic, currentValue + value);
-            Logger.log(`Adding to statistic ${statistic}: ${value}`, "DEBUG", "STATISTICS");
+            if (statistic !== "minecraft:play_time" &&
+                statistic !== "minecraft:time_since_death" &&
+                statistic !== "minecraft:time_since_rest") {
+                Logger.log(`Getting statistic ${statistic}: ${value}`, "DEBUG", "STATISTICS");
+            }
 
         } catch (error) {
             Logger.log(`Error adding to statistic ${statistic}: ${error}`, "ERROR", "STATISTICS");
@@ -260,7 +267,7 @@ var Statistics = class {
         try {
             const db = Statistics.#databases.get(this.typeId);            
             db.set(this.player.id, stats);
-            Logger.log(`Saving player stats for ${this.player.name}`, "DEBUG", "STATISTICS");
+            //Logger.log(`Saving player stats for ${this.player.name}`, "DEBUG", "STATISTICS");
         } catch (error) {
             Logger.log(`Error saving player stats: ${error}`, "ERROR", "STATISTICS");
         }
@@ -375,15 +382,18 @@ var PlacedStatistics = class extends Statistics {
 };
 
 var MinedStatistics = class extends Statistics {
+    #blockDb;
+
     constructor(player) {
         super(player, "QAE:mined" /* BLOCK_MINED */);
         this.player = player;
+        this.#blockDb = itemDatabase.getInstance();
     }
     addBlockType(blockType) {
         // Ensure we're using just the block ID string
         const blockId = typeof blockType === 'object' ? blockType.id : blockType;
         this.addStatistic(blockId);
-        Logger.log(`Adding block type stats for ${blockId}`, "DEBUG", "STATISTICS");
+        Logger.log(`Adding block type stats for ${blockId}`, "DEBUG", "MINED_STATISTICS");
     }
 
     getBlockType(blockType) {
@@ -392,18 +402,38 @@ var MinedStatistics = class extends Statistics {
         let value = this.getStatistic(blockId);
         
         // Add debug logging
-        Logger.log(`Getting block type stats for ${blockId}: ${value}`, "DEBUG", "STATISTICS");        
+        Logger.log(`Getting block type stats for ${blockId}: ${value}`, "DEBUG", "MINED_STATISTICS");        
         return value;
     }
 
     getTotalBlocksMined() {
-        Logger.log(`Getting all blocks count`, "DEBUG", "STATISTICS");
+        Logger.log(`Getting all blocks count`, "DEBUG", "MINED_STATISTICS");
         return this.getTotalValue();
     }
 
     getMinedBlockTypes() {
-        Logger.log(`Getting all block types`, "DEBUG", "STATISTICS");
+        Logger.log(`Getting all block types`, "DEBUG", "MINED_STATISTICS");
         return this.getStatisticTypes();
+    }
+
+    
+    getDetailsForCategory(category) {
+        try {
+            const blocksInCategory = this.#blockDb.getBlocksByCategory(category);
+            const details = {};
+            
+            for (const [blockId, blockData] of Object.entries(blocksInCategory)) {
+                details[blockId] = {
+                    count: this.getBlockType(blockId),
+                    metadata: blockData
+                };
+            }
+            
+            return details;
+        } catch (error) {
+            Logger.log(`Error getting category details for ${category}: ${error}`, "ERROR", "MINED_STATISTICS");
+            return {};
+        }
     }
 
 };
@@ -447,7 +477,151 @@ var KilledByStatistics = class extends Statistics {
     }
 };
 
-// Your existing Statistics classes go here...
-// (CustomStatistics, MinedStatistics, KilledStatistics, KilledByStatistics)
+var EatenStatistics = class extends Statistics {
+    constructor(player) {
+        super(player, "QAE:food_eaten");
+        this.player = player;
+    }
+
+    addItemType(item) {
+        this.addStatistic(item);
+        Logger.log(`Adding food type stats for ${item}: ${value}`, "DEBUG", "MINED_STATISTICS");
+        console.warn(item);
+    }
+
+    getItemType(item) {
+        let value = this.getStatistic(item);
+
+        Logger.log(`Getting food type stats for ${item}: ${value}`, "DEBUG", "MINED_STATISTICS");        
+        return value;
+    }
+
+    getTotalItemsEaten() {
+        Logger.log(`Getting all Food eaten`, "DEBUG", "MINED_STATISTICS");
+        return this.getTotalValue();
+    }
+
+    getEatenTypes() {
+        Logger.log(`Getting all Food types`, "DEBUG", "MINED_STATISTICS");
+        return this.getStatisticTypes();
+    }
+}
+
+var DimensionStatistics = class extends Statistics {
+    constructor(player){
+        super(player, "QAE:dimension_changes");
+        this.player = player;
+    }
+
+    addDimensionChange(dimension){
+        this.addStatistic(dimension);
+        console.warn(dimension);
+    }
+
+    getDimensionChange(dimension){
+        let value = this.getStatistic(dimension);
+
+        return value;
+    }
+}
+
+
+/**
+ * Tracks tool breakage statistics
+ */
+var ToolStatistics = class extends Statistics {
+    #itemDb;
+
+    constructor(player) {
+        super(player, "QAE:tool_broken" /* TOOL_BROKEN */);
+        this.player = player;
+        this.#itemDb = itemDatabase.getInstance();
+    }
+
+    /**
+     * Records when a tool breaks
+     * @param {string|object} toolType - The tool that broke (either object or string ID)
+     */
+    addToolBreak(toolType) {
+        // Ensure we're using just the tool ID string
+        const toolId = typeof toolType === 'object' ? toolType.id : toolType;
+        this.addStatistic(toolId);
+        Logger.log(`Adding broken tool stat for ${toolId}`, "DEBUG", "STATISTICS");
+    }
+
+    /**
+     * Gets the number of times a specific tool has broken
+     * @param {string|object} toolType - The tool to check
+     * @returns {number} Number of times the tool has broken
+     */
+    getToolBreakCount(toolType) {
+        const toolId = typeof toolType === 'object' ? toolType.id : toolType;
+        let value = this.getStatistic(toolId);
+        
+        Logger.log(`Getting tool break stats for ${toolId}: ${value}`, "DEBUG", "STATISTICS");
+        return value;
+    }
+
+    /**
+     * Gets the total number of tools broken across all types
+     * @returns {number} Total number of broken tools
+     */
+    getTotalToolsBreak() {
+        Logger.log(`Getting total broken tools count`, "DEBUG", "STATISTICS");
+        return this.getTotalValue();
+    }
+
+    /**
+     * Gets the count of tools broken in a specific category
+     * @param {string} category - The category to check
+     * @returns {number} Number of tools broken in the category
+     */
+    getToolsBreakInCategory(category) {
+        try {
+            const toolsInCategory = this.#itemDb.getBlocksByCategory(category);
+            let totalBroken = 0;
+            
+            for (const toolData of Object.values(toolsInCategory)) {
+                const toolId = toolData.id;
+                const breakCount = this.getToolBreakCount(toolId);
+                totalBroken += breakCount;
+            }
+            
+            return totalBroken;
+        } catch (error) {
+            Logger.log(`Error getting tool break stats for category ${category}: ${error}`, "ERROR", "STATISTICS");
+            return 0;
+        }
+    }
+
+    /**
+     * Checks if all tools in a category have been broken at least once
+     * @param {string} category - The category to check
+     * @returns {number} 1 if all tools have been broken, 0 otherwise
+     */
+    haveAllToolsInCategoryBroken(category) {
+        try {
+            const toolsInCategory = this.#itemDb.getBlocksByCategory(category);
+            
+            if (Object.keys(toolsInCategory).length === 0) {
+                return 0;
+            }
+            
+            for (const toolData of Object.values(toolsInCategory)) {
+                const toolId = toolData.id;
+                const breakCount = this.getToolBreakCount(toolId);
+                
+                if (breakCount < 1) {
+                    return 0; // Found a tool that hasn't been broken
+                }
+            }
+            
+            return 1; // All tools have been broken at least once
+        } catch (error) {
+            Logger.log(`Error checking all tools broken in category ${category}: ${error}`, "ERROR", "STATISTICS");
+            return 0;
+        }
+    }
+};
 
 export { StatisticsManager, PlayerStatistics };

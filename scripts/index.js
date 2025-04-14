@@ -2,6 +2,7 @@
 import { world, system } from '@minecraft/server';
 import { AdminMenu } from './ui/adminMenu';
 import { PlayerMenu } from './ui/playerMenu';
+import { SimpleQuestBook } from './ui/simpleQuestBook.js';
 import { CollectionManager, CollectionStorage, CollectionHandler, CollectionGroupManager } from './managers/collectionsManager';
 import { MilestoneManager, MilestoneStorage, MilestoneHandler } from './managers/milestoneManager.js'
 import { QuestPointsManager } from './managers/questPointManager.js'
@@ -17,6 +18,7 @@ import * as perf from "./tests/perf";
 import Fakeplayer from "./fakePlayers/FakePlayers";
 import HelpGuide from "./fakePlayers/Help";
 import { StatisticsManager } from './managers/statisticsManager';
+import { TimerTracker } from './managers/timerManager.js';
 
 let host = [...world.getPlayers()][0];
 
@@ -84,7 +86,7 @@ world.afterEvents.worldInitialize.subscribe(async () => {
         }
 
         try {
-            initSuccess = await StatisticsManager.initialize();
+            initSuccess = await StatisticsManager.initialize();            
             Logger.log("Statistics Manager initialized", "DEBUG", "MAIN");
         } catch (managerError) {
             Logger.log(`Failed to initialize Statistics manager: ${managerError}`, "ERROR", "MAIN");
@@ -104,6 +106,14 @@ world.afterEvents.worldInitialize.subscribe(async () => {
             Logger.log("Quest points Manager initialized", "DEBUG", "MAIN");
         } catch (managerError) {
             Logger.log(`Failed to initialize Quest Points manager: ${managerError}`, "ERROR", "MAIN");
+            initSuccess = false;
+        }
+
+        try {
+            initSuccess = await TimerTracker.initialize();
+            Logger.log("Timer Tracker initialized", "DEBUG", "MAIN");
+        } catch (timerError) {
+            Logger.log(`Failed to initialize Timer Tracker: ${timerError}`, "ERROR", "MAIN");
             initSuccess = false;
         }
 
@@ -167,12 +177,13 @@ world.afterEvents.itemUse.subscribe((event) => {
     try {
         const { source: player, itemStack } = event;
 
-        const ui = new ActionFormData()
-            .title("Default")
-            .body("")
-            .button("button1")
-            .button("button2")
-            .button("button3", "textures/ui/mining_icon.png");
+        const ui = new SimpleQuestBook()
+            .title("NewQuestBook")
+            .body("textures/ui/QuestBackgrounds/qaeInTheBeginning")
+            //.title("QuestBook")
+            .button(456, "minecraft:diamond_sword","its a diamond sword","minecraft:diamond_sword", 66, 50, true)
+            
+            
 
         // const mfd = new ChestFormData('54')
         // .title('Testing')
@@ -203,50 +214,10 @@ world.afterEvents.itemUse.subscribe((event) => {
 
                 sendNotification(player, "Well Well Well....      \n§gFree Minecoins!! ", 'textures/ui/groupIcons/quest_book.png' , true);
                 break;
-
-
-                // const stats = StatisticsManager.getPlayerStats(player);
-
-                // const db = new JsonDatabase("skychievments_stats_QAE_mined");
-                // db.set("key1", "value1");
-                // console.warn(db.size);
-
-                // // Iterating over the map using for loop
-                // for (const [key, value] of db) {
-                // console.warn(`${key} = ${value}`);
-                // }
-
-                // const playerStat = db.get(player.id);
-
-                
-
-                //const myDB = new JsonDatabase("skychievments_stats_QAE:custom");
-
-               //getting all data saved in database
-                //for(const [key, value] of myDB.entries()){
-                //    console.warn(key, value);
-               // }
-
-
-                //console.log("Starting benchmark");
-               //perf.Main();
-               // console.log("Benchmark complete");
-
-                //player.onScreenDisplay.setActionBar('hello')
-                //showToast(player, 'Well done, you mined a block!! \nHere have 10 points');
-
-                //showTipToast(player, 'Well done, you mined a block!! \nHere have 10 points');
-
-                //showAchievementToast(player, '017', 'achievement', 'textures/items/wheat', 'ach17');
-
-                //player.sendMessage(`_r4ui:toast_0.header.01.body.017.slideshow_0.textures/items/wheat`);
-
-                
-
-                //showTipToast(player, 'hello');
-                //mfd.show(player); 
-
-                
+            
+            case "minecraft:iron_ingot":
+                const response =  ui.show(player);
+            break;
         }
     } catch (error) {
         Logger.log(`Error handling item use: ${error}`, "ERROR", "MAIN");
@@ -271,6 +242,11 @@ world.afterEvents.playerSpawn.subscribe(async (event) => {
         console.log(`${event.player.typeId} spawned with id: ${event.player.id}`);
         showTipToast(player, "welcome");
 
+        if (initialSpawn) {
+            TimerTracker.handleEvent(player, "firstSpawn");
+            Logger.log(`Initialized first spawn timer for new player: ${player.name}`, "DEBUG", "MAIN");
+        }
+
         //if (!initialSpawn) return; // If it's not the first spawn, exit method
         //player.addTag('skychievments');
         //showTipToast(player, 'welcome');
@@ -278,14 +254,7 @@ world.afterEvents.playerSpawn.subscribe(async (event) => {
         Logger.log(`Error handling player spawn: ${error}`, "ERROR", "MAIN");
     }
 });
-
-// world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
-//     //console.warn(`${entity.typeId} was spawned in the world because of ${cause}`)
-//     if (entity.typeId === "minecraft:item") {
-//         const itemStack = entity.getComponent("minecraft:item").itemStack;
-//           console.log(`Tracking item: ${itemStack.typeId}`);
-//       }
-// });
+/* 
 // Track the last broken block's location and time
 let lastBreakData = {
     x: 0,
@@ -342,7 +311,7 @@ world.afterEvents.entitySpawn.subscribe(({ entity }) => {
             }, 1);
         }
     }
-});
+}); */
 
 
 import 'fakePlayers/FakePlayers'
@@ -356,13 +325,13 @@ const ValidPrefixes = [
     './player'
 ];
 
-world.beforeEvents.chatSend.subscribe((ev) => {
-    const cmd = ev.message.split(' ')[0];
-    if (!ValidPrefixes.includes(cmd)) return;
+// world.beforeEvents.chatSend.subscribe((ev) => {
+//     const cmd = ev.message.split(' ')[0];
+//     if (!ValidPrefixes.includes(cmd)) return;
 
-    ev.cancel = true;
-    system.run(() => FakeplayerCmd(ev))
-});
+//     ev.cancel = true;
+//     system.run(() => FakeplayerCmd(ev))
+// });
 
 const Database = new Map();
 
@@ -467,7 +436,7 @@ function CheckPlayer(username, callback) {
 }
 
 function onPlayerBreakBlock(event) {
-    const { player, brokenBlockPermutation } = event;
+    const { player, brokenBlockPermutation, itemStackAfterBreak, itemStackBeforeBreak } = event;
 
     const stats = StatisticsManager.getPlayerStats(player);
     if (!stats) {
@@ -477,6 +446,13 @@ function onPlayerBreakBlock(event) {
     stats.blockMined.addBlockType(brokenBlockPermutation.type);
     Logger.log(`Updated block count for player ${player.name}: ${brokenBlockPermutation.typeId}`, "DEBUG", "INDEX");
     stats.custom.addStatistic("minecraft:blocks_mined" /* blocksMined */, 1);
+
+    if (!itemStackBeforeBreak) return;
+
+    if (!itemStackAfterBreak?.typeId){
+        stats.toolBroken.addToolBreak(itemStackBeforeBreak.typeId);
+        Logger.log(`Updated Tool breaks for player ${player.name}: ${itemStackBeforeBreak.typeId}`, "DEBUG", "INDEX");
+    }
 }
 
 function onPlayerPlacedBlock(event) {
@@ -491,23 +467,6 @@ function onPlayerPlacedBlock(event) {
     Logger.log(`Updated block count for player ${player.name}: ${block.typeId}`, "DEBUG", "INDEX");
     stats.custom.addStatistic("minecraft:blocks_placed" /* blocksPlaced */, 1);
 }
-
-function getMainHand(param) {
-    const hand = param.getComponent("equippable").getEquipmentSlot("Mainhand");
-
-    
-    const sharpness = weapon?.getComponent("enchantable")?.getEnchantment("sharpness").level;
-    console.warn(sharpness);
-
-    //const enchantments = hand.getComponent('enchantable')?.getEnchantments() || [];
-   
-    // const enc = hand.getComponent("enchantable").getEnchantments();
-    // for (let i = 0; i < enc.length; i++) {
-    // console.warn(enc.type.id)
-
-    return hand.hasItem() && hand;
-    
-};
 
 import { Player as Player10 } from "@minecraft/server";
 function onEntityKilled(event) {
@@ -548,7 +507,68 @@ function onEntityKilled(event) {
     }
 }
 
-//players travvelling 
+import { Player as Player14 } from "@minecraft/server";
+function onPlayerDie(event) {
+  const { deadEntity } = event;
+  if (!(deadEntity instanceof Player14)) return;
+  const stats = StatisticsManager.getPlayerStats(deadEntity);
+  if (!stats) throw new ReferenceError("Player not found");
+  stats.custom.setStatistic("minecraft:time_since_death" /* timeSinceDeath */, 0);
+  TimerTracker.handleEvent(deadEntity, "player_death");
+}
+
+import { system as system16, world as world13 } from "@minecraft/server";
+system16.runInterval(() => {
+  for (const player of world13.getAllPlayers()) {
+    const stats = StatisticsManager.getPlayerStats(player);
+    if (!stats) continue;
+    stats.custom.addStatistic("minecraft:play_time" /* playTime */);
+    stats.custom.addStatistic("minecraft:time_since_death" /* timeSinceDeath */);
+    stats.custom.addStatistic("minecraft:time_since_rest" /* timeSinceRest */);
+  }
+});
+
+var MinecraftEffectTypes = ((MinecraftEffectTypes2) => {
+    MinecraftEffectTypes2["Absorption"] = "minecraft:absorption";
+    MinecraftEffectTypes2["BadOmen"] = "minecraft:bad_omen";
+    MinecraftEffectTypes2["Blindness"] = "minecraft:blindness";
+    MinecraftEffectTypes2["ConduitPower"] = "minecraft:conduit_power";
+    MinecraftEffectTypes2["Darkness"] = "minecraft:darkness";
+    MinecraftEffectTypes2["FatalPoison"] = "minecraft:fatal_poison";
+    MinecraftEffectTypes2["FireResistance"] = "minecraft:fire_resistance";
+    MinecraftEffectTypes2["Haste"] = "minecraft:haste";
+    MinecraftEffectTypes2["HealthBoost"] = "minecraft:health_boost";
+    MinecraftEffectTypes2["Hunger"] = "minecraft:hunger";
+    MinecraftEffectTypes2["Infested"] = "minecraft:infested";
+    MinecraftEffectTypes2["InstantDamage"] = "minecraft:instant_damage";
+    MinecraftEffectTypes2["InstantHealth"] = "minecraft:instant_health";
+    MinecraftEffectTypes2["Invisibility"] = "minecraft:invisibility";
+    MinecraftEffectTypes2["JumpBoost"] = "minecraft:jump_boost";
+    MinecraftEffectTypes2["Levitation"] = "minecraft:levitation";
+    MinecraftEffectTypes2["MiningFatigue"] = "minecraft:mining_fatigue";
+    MinecraftEffectTypes2["Nausea"] = "minecraft:nausea";
+    MinecraftEffectTypes2["NightVision"] = "minecraft:night_vision";
+    MinecraftEffectTypes2["Oozing"] = "minecraft:oozing";
+    MinecraftEffectTypes2["Poison"] = "minecraft:poison";
+    MinecraftEffectTypes2["RaidOmen"] = "minecraft:raid_omen";
+    MinecraftEffectTypes2["Regeneration"] = "minecraft:regeneration";
+    MinecraftEffectTypes2["Resistance"] = "minecraft:resistance";
+    MinecraftEffectTypes2["Saturation"] = "minecraft:saturation";
+    MinecraftEffectTypes2["SlowFalling"] = "minecraft:slow_falling";
+    MinecraftEffectTypes2["Slowness"] = "minecraft:slowness";
+    MinecraftEffectTypes2["Speed"] = "minecraft:speed";
+    MinecraftEffectTypes2["Strength"] = "minecraft:strength";
+    MinecraftEffectTypes2["TrialOmen"] = "minecraft:trial_omen";
+    MinecraftEffectTypes2["VillageHero"] = "minecraft:village_hero";
+    MinecraftEffectTypes2["WaterBreathing"] = "minecraft:water_breathing";
+    MinecraftEffectTypes2["Weakness"] = "minecraft:weakness";
+    MinecraftEffectTypes2["Weaving"] = "minecraft:weaving";
+    MinecraftEffectTypes2["WindCharged"] = "minecraft:wind_charged";
+    MinecraftEffectTypes2["Wither"] = "minecraft:wither";
+    return MinecraftEffectTypes2;
+  })(MinecraftEffectTypes || {});
+
+//#region players travelling 
 /**************************************************************************************************/
 // src/statistics/custom/TravelDistance.ts
 import { system as system14, world as world11 } from "@minecraft/server";
@@ -572,61 +592,91 @@ var isMoving_default = isMoving;
 
 // src/statistics/custom/TravelDistance.ts
 var fallDistanceMap = /* @__PURE__ */ new Map();
-// system14.runInterval(() => {
-//   for (const player of world11.getAllPlayers()) {
-//     const stats = StatisticsManager.getPlayerStats(player);
-//     if (!stats) continue;
-//     const velocity = player.getVelocity();
-//     const velocityCm = Math.hypot(velocity.x, velocity.y, velocity.z) * 100;
-//     const playerIsMoving = isMoving_default(player);
-//     const heightRange = player.dimension.heightRange;
-//     if (!playerIsMoving) {
-//       continue;
-//     }
-//     if (player.isClimbing) {
-//       const climbCm = Math.abs(velocity.y) * 100;
-//       stats.custom.addStatistic("minecraft:climb_one_cm" /* climbOneCm */, climbCm);
-//     }
-//     if (player.isSneaking) {
-//       stats.custom.addStatistic("minecraft:crouch_one_cm" /* crouchOneCm */, velocityCm);
-//     }
-//     if (player.isFlying) {
-//       stats.custom.addStatistic("minecraft:fly_one_cm" /* flyOneCm */, velocityCm);
-//     }
-//     if (player.isSprinting && player.isOnGround) {
-//       stats.custom.addStatistic("minecraft:sprint_one_cm" /* sprintOneCm */, velocityCm);
-//     } else if (player.isOnGround && velocity.y === 0) {
-//       stats.custom.addStatistic("minecraft:walk_one_cm" /* walkOneCm */, velocityCm);
-//     }
-//     if (player.isSwimming) {
-//       stats.custom.addStatistic("minecraft:swim_one_cm" /* swimOneCm */, velocityCm);
-//     }
-//     if (player.isGliding) {
-//       stats.custom.addStatistic("minecraft:aviate_one_cm" /* aviateOneCm */, velocityCm);
-//     }
-//   }
-// });
-// system14.runInterval(() => {
-//   for (const player of world11.getAllPlayers()) {
-//     const fallDistance = fallDistanceMap.get(player) ?? 0;
-//     const jumpBoostEffect = player.getEffect("minecraft:jump_boost");
-//     let jumpHeight = 1.2522;
-//     if (jumpBoostEffect) {
-//       jumpHeight = 0.0308354 * jumpBoostEffect.amplifier ** 2 + 0.744631 * jumpBoostEffect.amplifier + 1.836131;
-//     }
-//     if (player.isFalling) {
-//       fallDistanceMap.set(player, fallDistance + Math.abs(player.getVelocity().y));
-//     } else if (fallDistance > jumpHeight) {
-//       const stats = StatisticsManager.getPlayerStats(player);
-//       if (!stats) throw new ReferenceError("Player not found");
-//       fallDistanceMap.set(player, 0);
-//     } else {
-//       fallDistanceMap.set(player, 0);
-//     }
-//   }
-// });
-/**************************************************************************************************/
+system14.runInterval(() => {
+  for (const player of world11.getAllPlayers()) {
+    const stats = StatisticsManager.getPlayerStats(player);
+    if (!stats) continue;
+    const velocity = player.getVelocity();
+    const velocityCm = Math.hypot(velocity.x, velocity.y, velocity.z) * 100;
+    const playerIsMoving = isMoving_default(player);
+    const heightRange = player.dimension.heightRange;
+    if (!playerIsMoving) {
+      continue;
+    }
+    if (player.isClimbing) {
+      const climbCm = Math.abs(velocity.y) * 100;
+      stats.custom.addStatistic("minecraft:climb_one_cm" /* climbOneCm */, climbCm);
+    }
+    if (player.isSneaking) {
+      stats.custom.addStatistic("minecraft:crouch_one_cm" /* crouchOneCm */, velocityCm);
+    }
+    if (player.isFlying) {
+      stats.custom.addStatistic("minecraft:fly_one_cm" /* flyOneCm */, velocityCm);
+    }
+    if (player.isSprinting && player.isOnGround) {
+      stats.custom.addStatistic("minecraft:sprint_one_cm" /* sprintOneCm */, velocityCm);
+    } else if (player.isOnGround && velocity.y === 0) {
+      stats.custom.addStatistic("minecraft:walk_one_cm" /* walkOneCm */, velocityCm);
+    } else if (player.location.y <= heightRange.max && player.location.y >= heightRange.min) {
+      const block = player.dimension.getBlock(player.location);
+      if (player.isInWater && block?.typeId === "minecraft:water" && block.above()?.typeId === "minecraft:water") {
+        stats.custom.addStatistic("minecraft:walk_under_water_one_cm" /* walkUnderWaterOneCm */, velocityCm);
+      } else if (!player.isInWater && block?.typeId === "minecraft:water") {
+        stats.custom.addStatistic("minecraft:walk_on_water_one_cm" /* walkOnWaterOneCm */, velocityCm);
+      }
+    }
+    if (player.isSwimming) {
+      stats.custom.addStatistic("minecraft:swim_one_cm" /* swimOneCm */, velocityCm);
+    }
+    if (player.isGliding) {
+      stats.custom.addStatistic("minecraft:aviate_one_cm" /* aviateOneCm */, velocityCm);
+    }
+  }
+});
+system14.runInterval(() => {
+  for (const player of world11.getAllPlayers()) {
+    const fallDistance = fallDistanceMap.get(player) ?? 0;
+    const jumpBoostEffect = player.getEffect(MinecraftEffectTypes.JumpBoost);
+    let jumpHeight = 1.2522;
+    if (jumpBoostEffect) {
+      jumpHeight = 0.0308354 * jumpBoostEffect.amplifier ** 2 + 0.744631 * jumpBoostEffect.amplifier + 1.836131;
+    }
+    if (player.isFalling) {
+      fallDistanceMap.set(player, fallDistance + Math.abs(player.getVelocity().y));
+    } else if (fallDistance > jumpHeight) {
+        const stats = StatisticsManager.getPlayerStats(player);
+      if (!stats) throw new ReferenceError("Player not found");
+      fallDistanceMap.set(player, 0);
+    } else {
+      fallDistanceMap.set(player, 0);
+    }
+  }
+});
 
+//#endregion
+
+function onPlayerConsume(event){
+    const { itemStack, source} = event;
+    const stats = StatisticsManager.getPlayerStats(source);
+
+    const item = itemStack.typeId;
+    if (!item.startsWith('minecraft:')) return;
+
+    stats.thingsEaten.addItemType(item);
+    stats.custom.addStatistic("minecraft:food_eaten" , 1);
+}
+
+function onDimensionChange(event){
+    const { fromLocation, toLocation, toDimension, player} = event;
+    const stats = StatisticsManager.getPlayerStats(player);
+    stats.dimensionChange.addDimensionChange(toDimension.id);
+}
+
+
+// Main event subscriptions
 world.afterEvents.playerBreakBlock.subscribe(onPlayerBreakBlock);
 world.afterEvents.entityDie.subscribe(onEntityKilled);
+world.afterEvents.entityDie.subscribe(onPlayerDie);
 world.afterEvents.playerPlaceBlock.subscribe(onPlayerPlacedBlock);
+world.afterEvents.itemCompleteUse.subscribe(onPlayerConsume);
+world.afterEvents.playerDimensionChange.subscribe(onDimensionChange);

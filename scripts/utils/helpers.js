@@ -234,7 +234,9 @@ export class StatValueFormatter {
                     return `${hours}h ${minutes % 60}m`;
                 }
                 return `${minutes}m ${seconds % 60}s`;
-                
+            case 'event':
+                return value;
+
             default:
                 return value.toString();
         }

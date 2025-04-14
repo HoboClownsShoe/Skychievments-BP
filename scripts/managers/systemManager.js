@@ -5,7 +5,7 @@ import { CollectionManager, CollectionStorage, CollectionHandler, CollectionGrou
 import { QuestPointsManager } from './questPointManager.js'
 import { DatabaseManager } from './databaseManager.js';
 import { JsonDatabase } from '../database/con-database.js';
-import { MilestoneManager } from './milestoneManager.js';
+import { MilestoneManager, MilestoneStorage } from './milestoneManager.js';
 
 export class SystemManager {
     // Property prefixes that we manage
@@ -16,180 +16,6 @@ export class SystemManager {
         'sk_logger_debug',
         'progress_'
     ];
-
-    // /**
-    //  * Completely resets the system to initial state
-    //  * Development use only - will erase all progress and settings
-    //  * @param {Player} player - The player initiating the reset (for notifications)
-    //  * @returns {Object|null} Summary of reset operations
-    //  */
-    // static async resetSystem(player) {
-    //     try {
-    //         Logger.log("Starting complete system reset...", "DEBUG", "SYSTEM");
-
-    //         // 1. Clear all managed dynamic properties
-    //         const properties = world.getDynamicPropertyIds();
-    //         let clearedCount = 0;
-
-    //         for (const property of properties) {
-    //             if (this.#DYNAMIC_PROPERTY_PREFIXES.some(prefix => property.startsWith(prefix))) {
-    //                 world.setDynamicProperty(property, undefined);
-    //                 clearedCount++;
-    //                 Logger.log(`Cleared property: ${property}`, "DEBUG", "SYSTEM");
-    //             }
-    //         }
-
-    //         const playerProperties = player.getDynamicPropertyIds();
-    //         for (const playProps of playerProperties) { 
-    //             player.setDynamicProperty(playProps, undefined);
-    //             Logger.log(`Cleared property: ${playProps}`, "DEBUG", "SYSTEM");
-    //         }
-
-    //         // 2. Reset player states
-    //         for (const currentPlayer of world.getAllPlayers()) {
-    //             if (currentPlayer.hasTag('skychievements')) {
-    //                 currentPlayer.removeTag('skychievements');                    
-
-    //                 Logger.log(`Reset player state: ${currentPlayer.name}`, "DEBUG", "SYSTEM");
-    //             }
-    //         }
-
-    //         // 3. Reset collection groups
-    //         const groupsReset = await CollectionGroupManager.resetToDefaults();
-    //         Logger.log(`Groups reset result: ${groupsReset}`, "DEBUG", "SYSTEM");
-
-    //         // 4. Initialize storage and collection systems
-    //         let storageInitialized = false;
-    //         let collectionsInitialized = false;
-
-    //         try {
-    //             // Initialize storage first
-    //             CollectionStorage.initialize();
-    //             storageInitialized = true;
-    //             Logger.log("Collection storage system initialized", "DEBUG", "SYSTEM");
-
-    //             // Initialize collection manager (which will load defaults)
-    //             collectionsInitialized = await CollectionManager.initialize();
-    //             Logger.log("Collection manager initialized", "DEBUG", "SYSTEM");
-    //         } catch (initError) {
-    //             Logger.log(`Error during initialization: ${initError}`, "ERROR", "SYSTEM");
-    //         }
-
-    //         // 5. Load collections for each group
-    //         let groupLoadSuccess = true;
-    //         if (collectionsInitialized) {
-    //             for (const groupId of CollectionGroupManager.getGroupIds()) {
-    //                 const group = CollectionGroupManager.getGroupById(groupId);
-    //                 if (!group) continue;
-
-    //                 try {
-    //                     const groupCollections = CollectionStorage.getCollectionsByGroup(groupId);
-    //                     Logger.log(`Loaded ${groupCollections.length} collections for group: ${group.displayName}`, "DEBUG", "SYSTEM");
-    //                 } catch (groupError) {
-    //                     Logger.log(`Error loading collections for group ${group.displayName}: ${groupError}`, "ERROR", "SYSTEM");
-    //                     groupLoadSuccess = false;
-    //                 }
-    //             }
-    //         }
-
-    //         const summary = {
-    //             propertiesCleared: clearedCount,
-    //             groupsReset,
-    //             storageInitialized,
-    //             collectionsInitialized,
-    //             groupLoadSuccess,
-    //         };
-
-    //         Logger.log(`System reset complete: ${JSON.stringify(summary)}`, "DEBUG", "SYSTEM");
-
-    //         // 6. Notify the initiating player
-    //         if (player) {
-    //             player.sendMessage(
-    //                 `§q§lSystem Reset Complete\n` +
-    //                 `§7Properties Cleared: §f${clearedCount}\n` +
-    //                 `§7Groups Reset: §f${groupsReset ? '§aSuccess' : '§cFailed'}\n` +
-    //                 `§7Storage Initialized: §f${storageInitialized ? '§aSuccess' : '§cFailed'}\n` +
-    //                 `§7Collections Initialized: §f${collectionsInitialized ? '§aSuccess' : '§cFailed'}\n` +
-    //                 `§7Group Load: §f${groupLoadSuccess ? '§aSuccess' : '§cFailed'}`
-    //             );
-    //         }
-
-    //         return summary;
-
-    //     } catch (error) {
-    //         Logger.log(`Critical error during system reset: ${error}`, "ERROR", "SYSTEM");
-    //         if (player) {
-    //             player.sendMessage('§c§lCritical error during system reset. Check logs for details.');
-    //         }
-    //         return null;
-    //     }
-    // }
-
-    // static async resetSystem(player) {
-    //     try {
-    //         Logger.log("Starting complete system reset...", "DEBUG", "SYSTEM");
-    
-    //         let summary = {
-    //             databasesReset: 0,
-    //             systemsReinitialized: 0,
-    //             errors: []
-    //         };
-    
-    //         // 1. Dispose all databases
-    //         Logger.log("Disposing all database instances...", "DEBUG", "SYSTEM");
-            
-            
- 
-
-    
-    //         // 2. Clear player states
-    //         Logger.log("Clearing player states...", "DEBUG", "SYSTEM");
-    //         for (const currentPlayer of world.getAllPlayers()) {
-    //             try {
-    //                 if (currentPlayer.hasTag('skychievments')) {
-    //                     currentPlayer.removeTag('skychievments');
-    //                 }
-    //             } catch (playerError) {
-    //                 summary.errors.push(`Failed to clear state for player ${currentPlayer.name}: ${playerError}`);
-    //             }
-    //         }
-    
-    //         // 3. Reinitialize all systems
-    //         Logger.log("Reinitializing systems...", "DEBUG", "SYSTEM");
-    //         const reinitResults = await DatabaseManager.reinitializeAll();
-            
-    //         summary.systemsReinitialized = reinitResults.success.length;
-    //         if (reinitResults.failed.length > 0) {
-    //             reinitResults.failed.forEach(({ dbName, error }) => {
-    //                 summary.errors.push(`Failed to reinitialize ${dbName}: ${error}`);
-    //             });
-    //         }
-    
-    //         // Log results
-    //         Logger.log(`System reset complete: ${JSON.stringify(summary)}`, "DEBUG", "SYSTEM");
-    
-    //         if (player) {
-    //             let message = `§q§lSystem Reset Complete\n` +
-    //                 `§7Systems Reinitialized: §f${summary.systemsReinitialized}`;
-                
-    //             if (summary.errors.length > 0) {
-    //                 message += `\n§cErrors: §f${summary.errors.length}`;
-    //                 message += `\n§7Check logs for details`;
-    //             }
-    
-    //             player.sendMessage(message);
-    //         }
-    
-    //         return summary;
-    
-    //     } catch (error) {
-    //         Logger.log(`Critical error during system reset: ${error}`, "ERROR", "SYSTEM");
-    //         if (player) {
-    //             player.sendMessage('§c§lCritical error during system reset. Check logs for details.');
-    //         }
-    //         return null;
-    //     }
-    // }
 
     static async resetSystem(player) {
         try {
@@ -315,9 +141,8 @@ export class SystemManager {
         }
     }
 
-
     /**
-     * Reloads the system, adding any new collections while preserving existing data
+     * Reloads the system, adding any new collections and milestones while preserving existing data
      * @param {Player} player - The player initiating the reload (for notifications)
      * @returns {Object|null} Summary of reload operations
      */
@@ -331,6 +156,9 @@ export class SystemManager {
                 newCollectionsAdded: 0,
                 collectionsUpdated: 0,
                 groupsProcessed: 0,
+                milestonesProcessed: 0,
+                newMilestonesAdded: 0,
+                milestonesUpdated: 0,
                 errors: []
             };
 
@@ -402,6 +230,68 @@ export class SystemManager {
                 }
             }
 
+            // 3. Process milestones
+            try {
+                // Make sure MilestoneStorage is initialized
+                if (!MilestoneStorage.initialize()) {
+                    const errorMsg = "Failed to initialize milestone storage";
+                    Logger.log(errorMsg, "ERROR", "SYSTEM");
+                    summary.errors.push(errorMsg);
+                } else {
+                    // Get default milestones from MilestoneManager
+                    const { MILESTONES } = await import('../config/milestones.js');
+                    
+                    if (MILESTONES) {
+                        // Process each milestone group and its milestones
+                        for (const [groupId, defaultMilestones] of Object.entries(MILESTONES)) {
+                            if (Array.isArray(defaultMilestones)) {
+                                for (const defaultMilestone of defaultMilestones) {
+                                    try {
+                                        if (!defaultMilestone?.id) continue;
+                                        
+                                        const existingMilestone = MilestoneStorage.getMilestone(defaultMilestone.id);
+                                        
+                                        if (!existingMilestone) {
+                                            // Add new milestone
+                                            const success = await MilestoneStorage.saveMilestone(defaultMilestone);
+                                            if (success) {
+                                                summary.newMilestonesAdded++;
+                                                Logger.log(`Added new milestone: ${defaultMilestone.id}`, "DEBUG", "SYSTEM");
+                                            }
+                                        } else {
+                                            // Update existing milestone while preserving any runtime state
+                                            // Determine what fields to preserve (this will depend on your milestone structure)
+                                            const updatedMilestone = {
+                                                ...defaultMilestone,
+                                                // Preserve any runtime fields here if needed
+                                            };
+                                            const success = await MilestoneStorage.saveMilestone(updatedMilestone);
+                                            if (success) {
+                                                summary.milestonesUpdated++;
+                                                Logger.log(`Updated milestone: ${defaultMilestone.id}`, "DEBUG", "SYSTEM");
+                                            }
+                                        }
+                                        summary.milestonesProcessed++;
+                                    } catch (milestoneError) {
+                                        const errorMsg = `Error processing milestone ${defaultMilestone?.id}: ${milestoneError}`;
+                                        Logger.log(errorMsg, "ERROR", "SYSTEM");
+                                        summary.errors.push(errorMsg);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        const errorMsg = "No default milestones found in config";
+                        Logger.log(errorMsg, "ERROR", "SYSTEM");
+                        summary.errors.push(errorMsg);
+                    }
+                }
+            } catch (milestoneError) {
+                const errorMsg = `Error processing milestones: ${milestoneError}`;
+                Logger.log(errorMsg, "ERROR", "SYSTEM");
+                summary.errors.push(errorMsg);
+            }
+
             Logger.log(`System reload complete: ${JSON.stringify(summary)}`, "DEBUG", "SYSTEM");
 
             // Notify the initiating player
@@ -410,7 +300,10 @@ export class SystemManager {
                     `§7Groups Processed: §f${summary.groupsProcessed}\n` +
                     `§7Collections Processed: §f${summary.collectionsProcessed}\n` +
                     `§7New Collections Added: §f${summary.newCollectionsAdded}\n` +
-                    `§7Collections Updated: §f${summary.collectionsUpdated}`;
+                    `§7Collections Updated: §f${summary.collectionsUpdated}\n` +
+                    `§7Milestones Processed: §f${summary.milestonesProcessed}\n` +
+                    `§7New Milestones Added: §f${summary.newMilestonesAdded}\n` +
+                    `§7Milestones Updated: §f${summary.milestonesUpdated}`;
 
                 if (summary.errors.length > 0) {
                     message += `\n§cErrors Encountered: §f${summary.errors.length}`;
@@ -430,8 +323,6 @@ export class SystemManager {
             return null;
         }
     }
-
-
 
     /**
      * Gets the current system status

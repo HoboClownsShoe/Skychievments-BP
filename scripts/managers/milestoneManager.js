@@ -1,7 +1,7 @@
 // MilestoneManager.js - Updated for statistics integration
 import { system, world } from "@minecraft/server";
 import { JsonDatabase } from '../database/con-database.js';
-import { MILESTONES } from '../config/milestones'
+import { MILESTONES } from '../config/milestones.js';
 import { Logger } from '../utils/logger.js';
 import { StatisticsManager } from '../managers/statisticsManager.js';
 import { QuestPointsManager } from '../managers/questPointManager.js';
@@ -9,6 +9,8 @@ import { CollectionHandler } from '../managers/collectionsManager';
 import { showTipToast } from '../utils/toast.js';
 import { RewardManager } from '../managers/rewardManager.js';
 import { itemDatabase } from './itemManager.js';
+import { RequirementChecker } from './requirementsManager.js';
+import { TimerTracker } from './timerManager.js';
 
 export class MilestoneManager {
     static #progressCheckingEnabled = true;
@@ -29,11 +31,11 @@ export class MilestoneManager {
                     }
                 }
             }
-            Logger.log("Collection storage initialized with defaults", "DEBUG", "COLLECTION_MANAGER");
+            Logger.log("Collection storage initialized with defaults", "DEBUG", "MILESTONE");
             return true;
 
         } catch (error) {
-            Logger.log(`Failed to initialize milestone storage: ${error}`, "ERROR", "MILESTONE_MANAGER");
+            Logger.log(`Failed to initialize milestone storage: ${error}`, "ERROR", "MILESTONE");
             return false;
         }
     }
@@ -44,28 +46,22 @@ export class MilestoneManager {
         }
 
         if (this.#progressCheckingEnabled) {
-            // First, set up individual intervals for each current player
             const setupPlayerChecks = () => {
                 const players = Array.from(world.getAllPlayers());
                 const totalPlayers = players.length;
 
                 if (totalPlayers === 0) return;
 
-                // Calculate the stagger time between starting each player's checks
-                const staggerTicks = Math.floor(300 / totalPlayers); // Spread initial checks across 15 seconds
+                const staggerTicks = Math.floor(300 / totalPlayers);
 
                 players.forEach((player, index) => {
-                    // Create a unique identifier for this player's interval
                     const intervalId = `milestone_check_${player.id}`;
 
-                    // Clear any existing interval for this player
                     if (this[intervalId]) {
                         system.clearRun(this[intervalId]);
                     }
 
-                    // Start a new interval with initial delay
                     system.runTimeout(() => {
-                        // Set up the 15-second recurring check for this player
                         this[intervalId] = system.runInterval(() => {
                             if (!player.isValid()) {
                                 system.clearRun(this[intervalId]);
@@ -73,27 +69,20 @@ export class MilestoneManager {
                                 return;
                             }
 
-                            console.log(`Milestone checking for player : ${player.id}`);
-                            // for (const [milestoneId, defaultMilestones] of Object.entries(MILESTONES)) {
-                            //     for (const milestone of defaultMilestones) {
-                            //         MilestoneHandler.updateMilestoneProgress(player, milestone);
-                            //     }
-                            // }
+                            //console.log(`Milestone checking for player : ${player.id}`);
                             MilestoneHandler.checkAllActiveMilestones(player);
-                        }, 300); // 15 seconds recurring interval
-                    }, index * staggerTicks); // Initial stagger delay
+                        }, 300);
+                    }, index * staggerTicks);
                 });
             };
 
-            // Set up initial checks
             setupPlayerChecks();
 
-            // Monitor for new players and set up their checks
             this.#progressCheckingInterval = system.runInterval(() => {
                 setupPlayerChecks();
             }, 300);
 
-            Logger.log("Milestone progress checking started", "DEBUG", "startProgressChecking");
+            Logger.log("Milestone progress checking started", "DEBUG", "MILESTONE");
         }
     }
 
@@ -102,7 +91,6 @@ export class MilestoneManager {
             system.clearRun(this.#progressCheckingInterval);
             this.#progressCheckingInterval = null;
 
-            // Clean up all individual player intervals
             const players = Array.from(world.getAllPlayers());
             players.forEach(player => {
                 const intervalId = `milestone_check_${player.id}`;
@@ -112,37 +100,9 @@ export class MilestoneManager {
                 }
             });
 
-            Logger.log("Milestone progress checking stopped", "DEBUG", "MILESTONE_MANAGER");
+            Logger.log("Milestone progress checking stopped", "DEBUG", "MILESTONE");
         }
     }
-
-    // static startProgressChecking() {
-    //     if (this.#progressCheckingInterval) {
-    //         system.clearRun(this.#progressCheckingInterval);
-    //     }
-
-    //     if (this.#progressCheckingEnabled) {            
-    //         this.#progressCheckingInterval = system.runInterval(() => {                
-    //             for (const player of world.getAllPlayers()) {
-    //                 console.log(`Milestone checking for player : ${player.id}`)
-    //                 for (const [milestoneId, defaultMilestones] of Object.entries(MILESTONES)) {
-    //                     for (const milestone of defaultMilestones) {
-    //                         MilestoneHandler.updateMilestoneProgress(player, milestone);
-    //                     }
-    //                 }
-    //             }
-    //         }, 300); // 15 seconds in ticks
-    //         Logger.log("Milestone progress checking started", "DEBUG", "MILESTONE_MANAGER");
-    //     }
-    // }
-
-    // static stopProgressChecking() {
-    //     if (this.#progressCheckingInterval) {
-    //         system.clearRun(this.#progressCheckingInterval);
-    //         this.#progressCheckingInterval = null;
-    //         Logger.log("Milestone progress checking stopped", "DEBUG", "MILESTONE_MANAGER");
-    //     }
-    // }
 
     static toggleProgressChecking() {
         this.#progressCheckingEnabled = !this.#progressCheckingEnabled;
@@ -166,14 +126,11 @@ export class MilestoneHandler {
     static #milestoneProgressDB;
     static #activatedMilestonesDB;
 
-    /**
-     * Initialize the Milestone manager
-     */
     static initialize() {
         try {
             this.#milestoneProgressDB = new JsonDatabase("skychievments_milestone_progress");
             this.#activatedMilestonesDB = new JsonDatabase("skychievments_milestone_activations");
-            Logger.log("Milestone progress initialized", "DEBUG", "initialize");
+            Logger.log("Milestone progress initialized", "DEBUG", "MILESTONE");
             return true;
         } catch (error) {
             console.warn(`Failed to initialize Milestone progress: ${error}`);
@@ -181,59 +138,156 @@ export class MilestoneHandler {
         }
     }
 
-    /**
-     * Check if a milestone is activated for a player
-    */
     static async isActivated(player, milestoneId) {
         try {
-            // Get activations for this player
             const activations = this.#activatedMilestonesDB.get(player.id) || {};
 
-            // Check if this milestone is activated
             if (activations[milestoneId]) {
                 return true;
             }
 
-            // Also check if the milestone is auto-activated (no activatedBy requirements)
             const milestone = MilestoneStorage.getMilestone(milestoneId);
             if (milestone && (!milestone.options?.activatedBy || milestone.options.activatedBy.length === 0)) {
-                return true; // No activation requirements means always activated
+                return true;
             }
 
             return false;
         } catch (error) {
-            Logger.log(`Error checking milestone activation: ${error}`, "ERROR", "isActivated");
+            Logger.log(`Error checking milestone activation: ${error}`, "ERROR", "MILESTONE");
             return false;
+        }
+    }
+
+    static logMilestoneProgress(player, milestoneId, milestone) {
+        try {
+            const progress = this.#milestoneProgressDB.get(player.id)?.[milestoneId];
+            if (!progress) {
+                Logger.log(`No progress data found for milestone ${milestoneId}`, "DEBUG", "MILESTONE");
+                return;
+            }
+            
+            Logger.log(`Progress for milestone ${milestoneId}:`, "DEBUG", "MILESTONE");
+            Logger.log(`- Current tier: ${progress.currentTier}`, "DEBUG", "MILESTONE");
+            Logger.log(`- Completed: ${progress.completed}`, "DEBUG", "MILESTONE");
+            Logger.log(`- Completed tiers: ${JSON.stringify(progress.completedTiers || {})}`, "DEBUG", "MILESTONE");
+            
+            if (milestone) {
+                Logger.log(`- Checking tier unlock status:`, "DEBUG", "MILESTONE");
+                for (const tierData of milestone.collections) {
+                    const isUnlocked = this.isTierUnlocked(tierData, progress, true);
+                    Logger.log(`  - Tier ${tierData.tier} (${tierData.id}): ${isUnlocked ? "UNLOCKED" : "LOCKED"}`, "DEBUG", "MILESTONE");
+                }
+            }
+        } catch (error) {
+            Logger.log(`Error logging milestone progress: ${error}`, "ERROR", "MILESTONE");
         }
     }
 
     static async activateMilestone(player, milestoneId) {
         try {
-            // Get current activations
             let activations = this.#activatedMilestonesDB.get(player.id) || {};
 
-            // Check if the milestone exists
             const milestone = MilestoneStorage.getMilestone(milestoneId);
             if (!milestone) {
-                Logger.log(`Cannot activate nonexistent milestone: ${milestoneId}`, 
-                    "ERROR", "activateMilestone");
+                Logger.log(`Cannot activate nonexistent milestone: ${milestoneId}`, "ERROR", "MILESTONE");
                 return false;
             }   
             
-            // Mark this milestone as activated
             activations[milestoneId] = {
                 activatedAt: Date.now(),
-                activatedBy: "reference" // Could also track which milestone activated it
+                activatedBy: "reference"
             };
 
-            // Save updated activations
             this.#activatedMilestonesDB.set(player.id, activations);
             await this.initializePlayerMilestoneIfNeeded(player, milestone);
-            Logger.log(`Activated milestone ${milestoneId} for player ${player.name}`, "DEBUG", "activateMilestone");
+
+            // Start milestone-level timers
+            this.#startMilestoneTimers(player, milestone);
+
+            Logger.log(`Activated milestone ${milestoneId} for player ${player.name}`, "DEBUG", "MILESTONE");
             return true;
         } catch (error) {
-            Logger.log(`Error activating milestone: ${error}`, "ERROR", "activateMilestone");
+            Logger.log(`Error activating milestone: ${error}`, "ERROR", "MILESTONE");
             return false;
+        }
+    }
+
+    /**
+     * Starts timers for milestone-level time-based requirements
+     * @param {object} player - The player
+     * @param {object} milestone - The milestone object
+     * @private
+     */
+    static #startMilestoneTimers(player, milestone) {
+        try {
+            // Start a timer for milestone activation
+            TimerTracker.startTimer(player, milestone.id, "milestone_activated");
+            Logger.log(`Started milestone activation timer for ${milestone.id}`, "DEBUG", "MILESTONE");
+            
+            // Check if any tiers in this milestone need the milestone-level timer
+            for (const tier of milestone.collections) {
+                if (!tier.requirements) continue;
+                
+                for (const req of tier.requirements) {
+                    if (req.type === 'timePassedSince' && !req.tierId) {
+                        // This is a milestone-level requirement (not tier-specific)
+                        // Start a timer for this requirement using milestone-level context
+                        const event = req.event || "milestone_activated";
+                        
+                        // Only start if it's a milestone-level event
+                        if (event === "milestone_activated" || event === "firstSpawn") {
+                            TimerTracker.startTimer(player, milestone.id, event);
+                            Logger.log(`Started milestone-level timer for ${event} in milestone ${milestone.id}`, "DEBUG", "MILESTONE");
+                        }
+                    }
+                }
+            }
+            
+            // Notify timer system of milestone activation
+            TimerTracker.handleEvent(player, "milestone_activated", { milestoneId: milestone.id });
+            
+        } catch (error) {
+            Logger.log(`Error starting milestone timers: ${error}`, "ERROR", "MILESTONE");
+        }
+    }
+
+    /**
+     * Starts timers for tier-specific time-based requirements
+     * @param {object} player - The player
+     * @param {string} milestoneId - The milestone ID
+     * @param {object} tierData - The tier data object
+     * @private
+     */
+    static #startTierTimers(player, milestoneId, tierData) {
+        try {
+            if (!tierData.requirements) return;
+            
+            // Generate a unique ID for this tier
+            const tierId = tierData.id || `tier_${tierData.tier}`;
+            
+            // Start a timer for tier activation
+            TimerTracker.startTimer(player, milestoneId, `${tierId}_activated`);
+            Logger.log(`Started tier activation timer for ${milestoneId}, tier ${tierData.tier}`, "DEBUG", "MILESTONE");
+            
+            // Check for any timePassedSince requirements in this tier
+            for (const req of tierData.requirements) {
+                if (req.type === 'timePassedSince') {
+                    // Start a timer for this requirement
+                    const event = req.event || `${tierId}_activated`;
+                    TimerTracker.startTimer(player, milestoneId, event);
+                    Logger.log(`Started timer for ${event} in milestone ${milestoneId}, tier ${tierData.tier}`, "DEBUG", "MILESTONE");
+                }
+            }
+            
+            // Notify timer system of tier activation
+            TimerTracker.handleEvent(player, "tier_activated", { 
+                milestoneId: milestoneId,
+                tierId: tierId,
+                tier: tierData.tier
+            });
+            
+        } catch (error) {
+            Logger.log(`Error starting tier timers: ${error}`, "ERROR", "MILESTONE");
         }
     }
 
@@ -249,7 +303,7 @@ export class MilestoneHandler {
                     if (!playerProgress[milestone.id]) {
                         const firstTier = milestone.collections.find(c => c.tier === 1);
                         playerProgress[milestone.id] = {
-                            currentTier: 1,
+                            currentTiers: [1],
                             requirements: firstTier.requirements.map(req => ({
                                 currentCount: 0,
                                 completed: false
@@ -262,43 +316,36 @@ export class MilestoneHandler {
             }
 
             this.#milestoneProgressDB.set(player.id, playerProgress);
-            Logger.log(`Initialized milestones for player ${player.name}`, "DEBUG", "MILESTONE_HANDLER");
+            Logger.log(`Initialized milestones for player ${player.name}`, "DEBUG", "MILESTONE");
             return true;
         } catch (error) {
-            Logger.log(`Error initializing player milestones: ${error}`, "ERROR", "MILESTONE_HANDLER");
+            Logger.log(`Error initializing player milestones: ${error}`, "ERROR", "MILESTONE");
             return false;
         }
     }
 
-    /**
-     * Initialize player milestones with proper starting tier
-     */
     static async initializePlayerMilestoneIfNeeded(player, milestone) {
         try {
             let playerProgress = this.#milestoneProgressDB.get(player.id) || {};
             
-            // Skip if already initialized
             if (playerProgress[milestone.id]) {
                 return true;
             }
             
-            // Find starting tier - the lowest tier that doesn't have unlock requirements
             const availableTiers = milestone.collections
                 .filter(c => !c.unlockedBy && !c.unlockedByAny)
                 .map(c => c.tier);
             
             if (availableTiers.length === 0) {
-                Logger.log(`No starting tier found for milestone ${milestone.id}`, 
-                    "ERROR", "MILESTONE_HANDLER");
+                Logger.log(`No starting tier found for milestone ${milestone.id}`, "ERROR", "MILESTONE");
                 return false;
             }
             
             const startTier = Math.min(...availableTiers);
             const firstTier = milestone.collections.find(c => c.tier === startTier);
             
-            // Initialize progress for this milestone
             playerProgress[milestone.id] = {
-                currentTier: startTier,
+                currentTiers: [startTier],
                 requirements: firstTier.requirements ? firstTier.requirements.map(req => ({
                     currentCount: 0,
                     completed: false
@@ -308,13 +355,11 @@ export class MilestoneHandler {
                 completedTiers: {}
             };
             
-            // Save the updated progress
             this.#milestoneProgressDB.set(player.id, playerProgress);
-            Logger.log(`Initialized milestone ${milestone.id} for player ${player.name}`, 
-                "DEBUG", "initializePlayerMilestoneIfNeeded");
+            Logger.log(`Initialized milestone ${milestone.id} for player ${player.name}`, "DEBUG", "MILESTONE");
             return true;
         } catch (error) {
-            Logger.log(`Error initializing milestone: ${error}`, "ERROR", "initializePlayerMilestoneIfNeeded");
+            Logger.log(`Error initializing milestone: ${error}`, "ERROR", "MILESTONE");
             return false;
         }
     }
@@ -329,7 +374,7 @@ export class MilestoneHandler {
             }
             return progress[milestoneId] || null;
         } catch (error) {
-            Logger.log(`Error getting player progress: ${error}`, "ERROR", "getPlayerProgress");
+            Logger.log(`Error getting player progress: ${error}`, "ERROR", "MILESTONE");
             return null;
         }
     }
@@ -341,86 +386,82 @@ export class MilestoneHandler {
             this.#milestoneProgressDB.set(player.id, progress);
             return true;
         } catch (error) {
-            Logger.log(`Error saving player progress: ${error}`, "ERROR", "savePlayerProgress");
+            Logger.log(`Error saving player progress: ${error}`, "ERROR", "MILESTONE");
             return false;
         }
     }
 
-    /**
-     * Check if a tier is unlocked based on the completion of other tiers
-     */
-    static isTierUnlocked(tierData, progress) {
-        // If no unlocking conditions, tier is always available
+    static isTierUnlocked(tierData, progress, doLogging = false) {
+        Logger.log(`Checking if Tier unlocked : ${tierData.tier}`, "DEBUG", "MILESTONE");
+
         if (tierData.unlockedBy === undefined && tierData.unlockedByAny === undefined) {
+            Logger.log(`Tier ${tierData.tier} has no unlock conditions, always available`, "DEBUG", "MILESTONE");
             return true;
         }
         
         progress.completedTiers = progress.completedTiers || {};
+        Logger.log(`Checking if tier ${tierData.tier} is unlocked. Completed tiers: ${JSON.stringify(progress.completedTiers)}`, "DEBUG", "MILESTONE");
         
-        // Check for "AND" condition - all specified tiers must be completed
         if (tierData.unlockedBy !== undefined) {
             const requiredTiers = Array.isArray(tierData.unlockedBy) 
                 ? tierData.unlockedBy 
                 : [tierData.unlockedBy];
+       
+            Logger.log(`Tier ${tierData.tier} requires ALL tiers ${JSON.stringify(requiredTiers)} to be completed`, "DEBUG", "MILESTONE");
+
+            for (const requiredTier of requiredTiers) {
+                const tierNum = typeof requiredTier === 'string' ? parseInt(requiredTier) : requiredTier;
+                const isCompleted = !!progress.completedTiers[tierNum];
                 
-            // All required tiers must be completed
-            return requiredTiers.every(requiredTier => !!progress.completedTiers[requiredTier]);
+                Logger.log(`Required tier ${tierNum} completion status: ${isCompleted}`, "DEBUG", "MILESTONE");
+                
+                if (!isCompleted) return false;
+            }
+            return true;
         }
         
-        // Check for "OR" condition - any of the specified tiers must be completed
         if (tierData.unlockedByAny !== undefined) {
             const anyRequiredTiers = Array.isArray(tierData.unlockedByAny)
                 ? tierData.unlockedByAny
                 : [tierData.unlockedByAny];
                 
-            // At least one required tier must be completed
             return anyRequiredTiers.some(requiredTier => !!progress.completedTiers[requiredTier]);
         }
         
         return false;
     }
 
-    /**
-     * Find the next tier that is unlocked but not completed
-     */
     static getNextUnlockedTier(milestone, progress) {
         progress.completedTiers = progress.completedTiers || {};
+
+        Logger.log(`Getting next unlocked Tiers or milestone : ${milestone.displayName}`, "DEBUG", "MILESTONE");
         
-        // Get all tiers sorted by their tier number
+        const unlockedTiers = [];
+        
         const allTiers = milestone.collections
             .map(c => c.tier)
             .sort((a, b) => a - b);
         
-        // Check each tier to see if it's unlocked and not completed
         for (const tier of allTiers) {
-            // Skip if already completed
             if (progress.completedTiers[tier]) {
                 continue;
             }
             
             const tierData = milestone.collections.find(c => c.tier === tier);
-            if (this.isTierUnlocked(tierData, progress)) {
-                return tier;
+            if (this.isTierUnlocked(tierData, progress, true)) {
+                unlockedTiers.push(tier);
             }
         }
         
-        return -1; // No unlocked and uncompleted tiers found
+        return unlockedTiers;
     }
 
-    /**
-     * Update milestone progress for all activated milestones
-     * This is called from the 15-second interval check
-     */
     static async checkAllActiveMilestones(player) {
         try {
-            // Get activations for this player
             const activations = this.#activatedMilestonesDB.get(player.id) || {};
             
-            // Get all milestone IDs
             const allMilestoneIds = [];
             
-           
-            // Add auto-activated milestones (no activatedBy)
             for (const [groupId, milestones] of Object.entries(MILESTONES)) {
                 for (const milestone of milestones) {
                     if (!milestone.options?.activatedBy || milestone.options.activatedBy.length === 0) {
@@ -429,7 +470,6 @@ export class MilestoneHandler {
                 }
             }
             
-            // Add explicitly activated milestones
             for (const milestoneId in activations) {
                 if (!allMilestoneIds.includes(milestoneId)) {
                     allMilestoneIds.push(milestoneId);
@@ -440,8 +480,6 @@ export class MilestoneHandler {
                 console.warn(`${milestoneId} is Active`)
             }
 
-            
-            // Process each active milestone
             for (const milestoneId of allMilestoneIds) {
                 const milestone = MilestoneStorage.getMilestone(milestoneId);
                 if (!milestone) continue;
@@ -451,69 +489,54 @@ export class MilestoneHandler {
             
             return true;
         } catch (error) {
-            Logger.log(`Error checking active milestones: ${error}`, "ERROR", "checkAllActiveMilestones");
+            Logger.log(`Error checking active milestones: ${error}`, "ERROR", "MILESTONE");
             return false;
         }
     }
 
-    /**
-     * Process a milestone reference type tier
-     * Simply activates the referenced milestone and marks the tier as completed
-     */
     static async processReferenceTier(player, currentTier) {
         try {
-            // Get the referenced milestone ID
             const referencedMilestoneId = currentTier.reference?.milestoneId;
             if (!referencedMilestoneId) {
-                Logger.log(`Reference tier missing milestoneId: ${currentTier.id}`, 
-                    "ERROR", "processReferenceTier");
+                Logger.log(`Reference tier missing milestoneId: ${currentTier.id}`, "ERROR", "MILESTONE");
                 return false;
             }
             
-            // Activate the referenced milestone
             const activationSuccess = await this.activateMilestone(player, referencedMilestoneId);
             if (!activationSuccess) {
-                Logger.log(`Failed to activate referenced milestone: ${referencedMilestoneId}`, 
-                    "ERROR", "processReferenceTier");
+                Logger.log(`Failed to activate referenced milestone: ${referencedMilestoneId}`, "ERROR", "MILESTONE");
                 return false;
             }
             
-            Logger.log(`Successfully activated milestone: ${referencedMilestoneId} from reference tier`, 
-                "DEBUG", "processReferenceTier");
+            Logger.log(`Successfully activated milestone: ${referencedMilestoneId} from reference tier`, "DEBUG", "MILESTONE");
             
-            // Always return success - the tier itself is considered complete
-            // Progress on the referenced milestone will be handled separately
             return true;
         } catch (error) {
-            Logger.log(`Error processing reference tier: ${error}`, "ERROR", "processReferenceTier");
+            Logger.log(`Error processing reference tier: ${error}`, "ERROR", "MILESTONE");
             return false;
         }
     }
 
-    /**
-     * Update milestone progress, checking tier completion and unlocking
-     */
     static async updateMilestoneProgress(player, milestone) {
         try {
-            Logger.log(`updating progress for milestone ${milestone.id} for player ${player.name}`, "DEBUG", "updateMilestoneProgress");
+            //player.sendMessage(`Milestone ${milestone.id}`);
+
+            Logger.log(`updating progress for milestone ${milestone.id} for player ${player.name}`, "DEBUG", "MILESTONE");
             if (!milestone?.id) {
-                Logger.log("Invalid milestone object", "ERROR", "updateMilestoneProgress");
+                Logger.log("Invalid milestone object", "ERROR", "MILESTONE");
                 return false;
             }
 
-            // Get all player progress data once
             const allProgress = this.#milestoneProgressDB.get(player.id) || {};            
             let progress = allProgress[milestone.id];
             let progressUpdated = false;
 
-            // Initialize if needed
             if (!progress) {
                 await this.initializePlayerMilestoneIfNeeded(player, milestone);
                 progress = (this.#milestoneProgressDB.get(player.id) || {})[milestone.id];
                 if (!progress) return false;
             }
 
-            // Early exit checks
             if (progress.completed && !milestone.options?.repeatable?.enabled) {
                 return false;
             }
@@ -526,7 +549,6 @@ export class MilestoneHandler {
                 }
             }
 
-            // Check prerequisites using the already loaded progress data
             const prereqsMet = await this.checkPrerequisitesEfficient(player, milestone, allProgress);
             if (!prereqsMet) {
                 return false;
@@ -536,126 +558,115 @@ export class MilestoneHandler {
             const rewardsToProcess = [];
             const newlyUnlockedTiers = new Set();
             const notifications = [];
+            const completedTiersThisUpdate = [];
 
-            while (keepChecking && !progress.completed) {
-                // Get current tier data
-                const currentTier = milestone.collections.find(c => c.tier === progress.currentTier);
-                if (!currentTier) return false;
+            const currentTiers = [...progress.currentTiers];
+        
+        for (const tierNumber of currentTiers) {
+            const currentTier = milestone.collections.find(c => c.tier === tierNumber);
+            if (!currentTier) continue;
+            
+            if (currentTier.type === 'milestone_reference') {
+                const referenceSuccess = await this.processReferenceTier(player, currentTier);
                 
-                if (currentTier.type === 'milestone_reference') {
-                    const referenceSuccess = await this.processReferenceTier(player, currentTier);
-                    
-                    if (referenceSuccess) {
-                        // Mark this reference tier as completed
-                        progress.completedTiers = progress.completedTiers || {};
-                        progress.completedTiers[currentTier.tier] = {
-                            completedAt: Date.now()
-                        };
-                        
-                        // Add notification
-                        const referencedMilestone = MilestoneStorage.getMilestone(currentTier.reference.milestoneId);
-                        if (referencedMilestone) {
-                            notifications.push(`Unlocked milestone: ${referencedMilestone.displayName}`);
-                        }
-                        
-                        // Process rewards for this tier
-                        if (currentTier.rewards && currentTier.rewards.length > 0) {
-                            rewardsToProcess.push(currentTier.rewards);
-                        }
-                        
-                        // Find next tier to work on
-                        const nextTier = this.getNextUnlockedTier(milestone, progress);
-                        if (nextTier !== -1) {
-                            progress.currentTier = nextTier;
-                            const nextTierData = milestone.collections.find(c => c.tier === nextTier);
-                            if (nextTierData && nextTierData.requirements) {
-                                progress.requirements = nextTierData.requirements.map(req => ({
-                                    currentCount: 0,
-                                    completed: false
-                                }));
-                            } else {
-                                progress.requirements = [];
-                            }
-                            progressUpdated = true;
-                        } else {
-                            // If no more tiers to complete, mark milestone as done
-                            progress.completed = true;
-                            progress.lastCompleted = Date.now();
-                            keepChecking = false;
-                        }
-                    } else {
-                        keepChecking = false; // Reference processing failed, try again later
-                    }
-                    
-                    continue;
-                }
-
-                // Check current tier requirements
-                const { allRequirementsMet, requirementsUpdated } = await this.checkTierRequirements(
-                    player,
-                    currentTier,
-                    progress
-                );
-                
-                if (requirementsUpdated) {
-                    progressUpdated = true;
-                }
-
-                // If all requirements are met, process completion
-                if (allRequirementsMet) {
-                    // Add current tier's rewards to process
-                    if (currentTier.rewards && currentTier.rewards.length > 0) {
-                        rewardsToProcess.push(currentTier.rewards);
-                    }
-                    
-                    // Record this tier as completed
+                if (referenceSuccess) {
                     progress.completedTiers = progress.completedTiers || {};
                     progress.completedTiers[currentTier.tier] = {
                         completedAt: Date.now()
                     };
-
-                    // check i and activate any dependant milestones
-                    await this.checkAndActivateDependentMilestones(player, milestone.id, currentTier.id);
                     
-                   // Find newly unlocked tiers due to this completion
-                    const tiersUnlockedByThisCompletion = this.findNewlyUnlockedTiers(
-                    milestone, currentTier.tier, progress);
+                    progress.currentTiers = progress.currentTiers.filter(t => t !== tierNumber);
                     
-                    // Record newly unlocked tiers for notifications
-                    tiersUnlockedByThisCompletion.forEach(tier => newlyUnlockedTiers.add(tier));
-                    
-                    // Find next uncompleted and unlocked tier
-                    const nextTier = this.getNextUnlockedTier(milestone, progress);
-                    if (nextTier !== -1) {
-                        progress.currentTier = nextTier;
-                        // Initialize requirements for new tier
-                        const nextTierData = milestone.collections.find(c => c.tier === nextTier);
-                        if (nextTierData && nextTierData.requirements) {
-                            progress.requirements = nextTierData.requirements.map(req => ({
-                                currentCount: 0,
-                                completed: false
-                            }));
-                        } else {
-                            progress.requirements = [];
-                        }
-                        progressUpdated = true;
-                    } else {
-                        // If no more tiers to complete, mark milestone as done
-                        progress.completed = true;
-                        progress.lastCompleted = Date.now();
-                        keepChecking = false;
+                    const referencedMilestone = MilestoneStorage.getMilestone(currentTier.reference.milestoneId);
+                    if (referencedMilestone) {
+                        notifications.push(`Unlocked milestone: ${referencedMilestone.displayName}`);
                     }
-                } else {
-                    keepChecking = false; // Current tier not completed, stop checking
+                    
+                    if (currentTier.rewards && currentTier.rewards.length > 0) {
+                        rewardsToProcess.push(currentTier.rewards);
+                    }
+                    
+                    completedTiersThisUpdate.push(tierNumber);
+                    
+                    progressUpdated = true;
                 }
+                
+                continue;
+            }
+            
+            const { allRequirementsMet, requirementsUpdated } = await this.checkTierRequirementsNew(
+                player,
+                currentTier,
+                progress
+            );
+            
+            if (requirementsUpdated) {
+                progressUpdated = true;
             }
 
-            // Process all accumulated rewards
+            if (allRequirementsMet) {
+                if (currentTier.rewards && currentTier.rewards.length > 0) {
+                    rewardsToProcess.push(currentTier.rewards);
+                }
+                
+                progress.completedTiers = progress.completedTiers || {};
+                const completedTierNumber = currentTier.tier;
+                progress.completedTiers[completedTierNumber] = {
+                    completedAt: Date.now()
+                };
+                
+                progress.currentTiers = progress.currentTiers.filter(t => t !== completedTierNumber);
+                
+                completedTiersThisUpdate.push(completedTierNumber);
+
+                Logger.log(`Completed tier ${completedTierNumber} in milestone ${milestone.id}`, "DEBUG", "MILESTONE");
+                Logger.log(`Updated completedTiers: ${JSON.stringify(progress.completedTiers)}`, "DEBUG", "MILESTONE");
+
+                await this.checkAndActivateDependentMilestones(player, milestone.id, currentTier.id);
+                
+                progressUpdated = true;
+            }
+        }
+
+        for (const completedTier of completedTiersThisUpdate) {
+            const tiersUnlockedByThisCompletion = this.findNewlyUnlockedTiers(
+                milestone, completedTier, progress);
+            
+            tiersUnlockedByThisCompletion.forEach(tier => newlyUnlockedTiers.add(tier));
+        }
+        
+        const allUnlockedTiers = this.getNextUnlockedTier(milestone, progress);
+        
+        for (const tier of allUnlockedTiers) {
+            if (!progress.currentTiers.includes(tier)) {
+                progress.currentTiers.push(tier);
+                
+                const tierData = milestone.collections.find(c => c.tier === tier);
+                if (tierData && tierData.requirements) {
+                    if (!progress.requirements || progress.requirements.length === 0) {
+                        progress.requirements = tierData.requirements.map(req => ({
+                            currentCount: 0,
+                            completed: false
+                        }));
+                    }
+                }
+
+                // Start timers for any timePassedSince requirements in this tier
+                this.#startTierTimers(player, milestone.id, tierData);
+                
+                progressUpdated = true;
+            }
+        }
+        
+            if (progress.currentTiers.length === 0 && Object.keys(progress.completedTiers || {}).length > 0) {
+                progress.completed = true;
+                progress.lastCompleted = Date.now();
+            }
+
             for (const rewards of rewardsToProcess) {
                 await RewardManager.processRewards(player, rewards, "complete");
             }
 
-            // If any tiers were newly unlocked, notify the player
             if (newlyUnlockedTiers.size > 0) {
                 const unlockedTiersList = Array.from(newlyUnlockedTiers);
                 const unlockedTiersData = unlockedTiersList
@@ -670,14 +681,12 @@ export class MilestoneHandler {
                 }
             }
 
-            // Send all notifications to the player
             if (notifications.length > 0) {
                 for (const notification of notifications) {
                     player.sendMessage(notification);
                 }
             }
 
-            // Save progress only if it was updated
             if (progressUpdated) {
                 allProgress[milestone.id] = progress;
                 this.#milestoneProgressDB.set(player.id, allProgress);
@@ -685,31 +694,30 @@ export class MilestoneHandler {
 
             return true;
         } catch (error) {
-            Logger.log(`Error updating milestone progress: ${error}`, "ERROR", "updateMilestoneProgress");
+            Logger.log(`Error updating milestone progress: ${error}`, "ERROR", "MILESTONE");
             return false;
         }
     }
 
-    /**
-     * Find all tiers that would be newly unlocked by completing a specific tier
-     */
     static findNewlyUnlockedTiers(milestone, completedTier, progress) {
+
+    try{
+
+        Logger.log(`Lets find any newly unlocked Tiers for mileStone : ${milestone.displayName} and Tier ${completedTier} `, "DEBUG", "MILESTONE");
+
         const newlyUnlocked = [];
         progress.completedTiers = progress.completedTiers || {};
         
         for (const collection of milestone.collections) {
-            // Skip if already completed
             if (progress.completedTiers[collection.tier]) {
                 continue;
             }
             
-            // Check simple unlockedBy condition
             if (collection.unlockedBy !== undefined) {
                 const requiredTiers = Array.isArray(collection.unlockedBy) 
                     ? collection.unlockedBy 
                     : [collection.unlockedBy];
                     
-                // If this tier is part of requirements and all other requirements are met
                 if (requiredTiers.includes(completedTier)) {
                     const otherRequirements = requiredTiers.filter(t => t !== completedTier);
                     const allOthersMet = otherRequirements.every(t => !!progress.completedTiers[t]);
@@ -720,17 +728,14 @@ export class MilestoneHandler {
                 }
             }
             
-            // Check unlockedByAny condition
             if (collection.unlockedByAny !== undefined) {
                 const anyOptions = collection.unlockedByAny;
                 
-                // Handle direct tier match
                 if (typeof anyOptions === 'number' && anyOptions === completedTier) {
                     newlyUnlocked.push(collection.tier);
                     continue;
                 }
                 
-                // Handle array of tiers (OR condition)
                 if (Array.isArray(anyOptions) && !Array.isArray(anyOptions[0])) {
                     if (anyOptions.includes(completedTier)) {
                         newlyUnlocked.push(collection.tier);
@@ -738,11 +743,9 @@ export class MilestoneHandler {
                     }
                 }
                 
-                // Handle array of arrays (complex conditions)
                 if (Array.isArray(anyOptions) && Array.isArray(anyOptions[0])) {
                     for (const option of anyOptions) {
                         if (Array.isArray(option) && option.includes(completedTier)) {
-                            // This group contains our completed tier, check if the other requirements are met
                             const otherRequirements = option.filter(t => t !== completedTier);
                             const allOthersMet = otherRequirements.every(t => !!progress.completedTiers[t]);
                             
@@ -756,199 +759,109 @@ export class MilestoneHandler {
             }
         }
         
+        newlyUnlocked.forEach(tier => {
+            Logger.log(`Newly unlocked tier: ${tier}`, "DEBUG", "MILESTONE");
+        });
+
         return newlyUnlocked;
     }
-    
-
-    /**
-    * Helper method to check tier requirements and update progress
-    */
-    static async checkTierRequirements(player, tierData, progress) {
-        const playerStats = StatisticsManager.getPlayerStats(player);
-        const categoryStats = StatisticsManager.getCategoryStats(player);
-        const container = player.getComponent('inventory').container;
-        const itemDb = itemDatabase.getInstance();
-        
-        let allRequirementsMet = true;
-        let requirementsUpdated = false;
-        
-        if (!tierData.requirements || tierData.requirements.length === 0) {
-            return { allRequirementsMet: true, requirementsUpdated: false };
-        }
-        
-        // Check all requirements for current tier
-        for (let i = 0; i < tierData.requirements.length; i++) {
-            const requirement = tierData.requirements[i];
-            let currentStatValue = 0;
-            
-            // Calculate current value based on requirement type
-            switch (requirement.type) {
-                case 'collect':
-                    // Collection logic
-                    currentStatValue = 0;
-                    for (let j = 0; j < container.size; j++) {
-                        const item = container.getItem(j);
-                        if (item && item.typeId === requirement.itemId) {
-                            currentStatValue += item.amount;
-                        }
-                    }
-                    break;
-                case 'collectAnyInCategory':
-                    // Any item in category logic
-                    currentStatValue = 0;
-                    const categoryItems = itemDb.getBlocksByCategory(requirement.category);
-                    if (Object.keys(categoryItems).length > 0) {
-                        for (let j = 0; j < container.size; j++) {
-                            const item = container.getItem(j);
-                            if (item && categoryItems[item.typeId]) {
-                                currentStatValue = 1;
-                                break;
-                            }
-                        }
-                    }
-                    break;
-                case 'collectAllInCategory':
-                        // Get all items in the specified category
-                        const allCategoryItems = itemDb.getBlocksByCategory(requirement.category);
-                        const categoryItemIds = Object.keys(allCategoryItems);
-
-                        if (categoryItemIds.length === 0) {
-                            currentStatValue = 0;
-                            break;
-                        }
-
-                        // Check if player has all these items
-                        const foundItemIds = new Set();
-                        for (let i = 0; i < container.size; i++) {
-                            const item = container.getItem(i);
-                            if (item && allCategoryItems[item.typeId]) {
-                                foundItemIds.add(item.typeId);
-                            }
-                        }
-
-                        // Player has all items if foundItemIds contains all categoryItemIds
-                        currentStatValue = (foundItemIds.size === categoryItemIds.length) ? 1 : 0;
-
-                    break;
-                case "anyBrokenToolInCategory":
-                    currentStatValue = 0
-                    break;
-                case "allBrokenToolInCategory":
-                    currentStatValue = 0
-                    break;
-
-                case 'anyInCategory': // only checks against blocks broken
-                    currentStatValue = categoryStats.getTotalForCategory(requirement.category);
-                    break;
-                case 'allInCategory':
-                    currentStatValue = categoryStats.hasAllInCategory(requirement.category);
-                    break;
-                case 'break':
-                    currentStatValue = playerStats.blockMined.getBlockType(requirement.itemId);
-                    break;
-                case 'place':
-                    currentStatValue = playerStats.blockPlaced.getBlockType(requirement.itemId);
-                    break;
-                case 'kill':
-                    currentStatValue = playerStats.entityKilled.getKillCount(requirement.itemId);
-                    break;
-                case 'anyBlock':
-                    currentStatValue = playerStats.custom.getCustomStat("minecraft:blocks_mined");
-                    break;
-                case "anyMob":
-                    currentStatValue = playerStats.custom.getCustomStat("minecraft:mob_kills");
-                    break;
-                case "walk":
-                    currentStatValue = playerStats.custom.getCustomStat("minecraft:walk_one_cm");
-                    break;
-                case "run":
-                    currentStatValue = playerStats.custom.getCustomStat("minecraft:sprint_one_cm");
-                    break;
-                case "sneek":
-                    currentStatValue = playerStats.custom.getCustomStat("minecraft:crouch_one_cm");
-                    break;
-                case "fly":
-                    currentStatValue = playerStats.custom.getCustomStat("minecraft:fly_one_cm");
-                    break;
-                case "climb":
-                    currentStatValue = playerStats.custom.getCustomStat("minecraft:climb_one_cm");
-                    break;
-                // ... other requirement types
-            }
-            
-            // Update individual requirement progress
-            if (currentStatValue > progress.requirements[i].currentCount) {
-                progress.requirements[i].currentCount = currentStatValue;
-                progress.requirements[i].completed = currentStatValue >= requirement.amount;
-                requirementsUpdated = true;
-            }
-            
-            // Check if this requirement is met
-            if (progress.requirements[i].currentCount < requirement.amount) {
-                allRequirementsMet = false;
-            }
-        }
-        
-        return { allRequirementsMet, requirementsUpdated };
+    catch (error) {
+        Logger.log(`Error finding newly unlocked tiers: ${error}`, "ERROR", "MILESTONE");
+        return false;
     }
+
+        
+    }
+
+    static async checkTierRequirementsNew(player, tierData, progress) {
+        try {
+            Logger.log(`Checking Tier Requirements for ${tierData.displayName}`, "DEBUG", "TIER_CHECKING");
+
+            const { requirements } = await RequirementChecker.checkRequirements(player, tierData.requirements || []);
+            let requirementsUpdated = false;
+            
+            if (!progress.requirements || progress.requirements.length === 0) {
+                progress.requirements = requirements.map(r => ({
+                    currentCount: r.currentValue,
+                    completed: r.isCompleted
+                }));
+                requirementsUpdated = true;
+            } else {
+                for (let i = 0; i < requirements.length; i++) {
+                    if (i >= progress.requirements.length) {
+                        progress.requirements.push({
+                            currentCount: requirements[i].currentValue,
+                            completed: requirements[i].isCompleted
+                        });
+                        requirementsUpdated = true;
+                    } else if (requirements[i].currentValue > progress.requirements[i].currentCount) {
+                        progress.requirements[i].currentCount = requirements[i].currentValue;
+                        progress.requirements[i].completed = requirements[i].isCompleted;
+                        requirementsUpdated = true;
+                    }
+                }
+            }
+            
+            const allRequirementsMet = requirements.every(r => r.isCompleted);
+            
+            return { allRequirementsMet, requirementsUpdated };    
+               
+        } catch (error) {
+            Logger.log(`Error checking the New Tier Requirements: ${error}`, "ERROR", "MILESTONE");
+            return false;
+        }
+
+        
+    }   
 
     static async checkPrerequisitesEfficient(player, milestone, existingProgress) {
         try {
-            Logger.log(`Checking prerequisites for ${milestone.id}`, "DEBUG", "checkPrerequisitesEfficient");
+            Logger.log(`Checking prerequisites for ${milestone.id}`, "DEBUG", "MILESTONE");
 
             if (!milestone.options?.prerequisites || milestone.options.prerequisites.length === 0) {
-                Logger.log(`No prerequisites for milestone ${milestone.id}`, "DEBUG", "checkPrerequisitesEfficient");
+                Logger.log(`No prerequisites for milestone ${milestone.id}`, "DEBUG", "MILESTONE");
                 return true;
             }
 
             for (const prereq of milestone.options.prerequisites) {
-                // Check if prerequisite is a quest first
                 const questCompletion = await CollectionHandler.isCollectionCompleted(player, prereq.id);
                 if (questCompletion) continue;
 
-                // Check if prerequisite is a milestone using existing progress data
                 const milestoneProgress = existingProgress[prereq.id];
                 if (!milestoneProgress?.completed) {
-                    Logger.log(`Prerequisite ${prereq.id} not completed on milestone ${milestone.id}`, "DEBUG", "checkPrerequisitesEfficient");
+                    Logger.log(`Prerequisite ${prereq.id} not completed on milestone ${milestone.id}`, "DEBUG", "MILESTONE");
                     return false;
                 }
             }
 
             return true;
         } catch (error) {
-            Logger.log(`Error checking prerequisites: ${error}`, "ERROR", "checkPrerequisitesEfficient");
+            Logger.log(`Error checking prerequisites: ${error}`, "ERROR", "MILESTONE");
             return false;
         }
     }
 
-    // Add this method to MilestoneHandler class
     static async checkAndActivateDependentMilestones(player, milestoneId, collectionId) {
         try {
-            // Get all milestone groups
             for (const [groupId, milestones] of Object.entries(MILESTONES)) {
                 for (const milestone of milestones) {
-                    // Skip already activated milestones
                     const isAlreadyActivated = await this.isActivated(player, milestone.id);
                     if (isAlreadyActivated) continue;
 
-                    // Check if this milestone is activated by the completed collection/milestone
                     if (milestone.options?.activatedBy) {
                         const activators = Array.isArray(milestone.options.activatedBy) 
                             ? milestone.options.activatedBy 
                             : [milestone.options.activatedBy];
                         
-                        // Look for activation by collection OR milestone
                         const shouldActivate = activators.some(activator => 
-                            activator === milestoneId || // Activate by milestone
-                            activator === collectionId    // Activate by collection
+                            activator === milestoneId || 
+                            activator === collectionId
                         );
                         
                         if (shouldActivate) {
                             await this.activateMilestone(player, milestone.id);
-                            Logger.log(`Activated milestone ${milestone.id} for player ${player.name} via collection completion`, 
-                                "DEBUG", "checkAndActivateDependentMilestones");
+                            Logger.log(`Activated milestone ${milestone.id} for player ${player.name} via collection completion`, "DEBUG", "MILESTONE");
                                 
-                            // Notify player about newly unlocked milestone
                             player.sendMessage(`§q§lUnlocked new milestone: §r§q${milestone.displayName}`);
                         }
                     }
@@ -956,14 +869,10 @@ export class MilestoneHandler {
             }
             return true;
         } catch (error) {
-            Logger.log(`Error checking dependent milestones: ${error}`, "ERROR", "checkAndActivateDependentMilestones");
+            Logger.log(`Error checking dependent milestones: ${error}`, "ERROR", "MILESTONE");
             return false;
         }
     }
-    
-
-
-
 }
 
 export class MilestoneStorage {
@@ -972,7 +881,9 @@ export class MilestoneStorage {
     static initialize() {
         try {
             this.#milestoneDB = new JsonDatabase("skychievments_milestones");
-            Logger.log("Milestone Storage initialized", "DEBUG", "LOGGER");
+            Logger.log("Milestone Storage initialized", "DEBUG", "MILESTONE");
+            // Optionally load defaults on initialization if the DB is empty
+            // this.loadDefaultsIfNeeded();
             return true;
         } catch (error) {
             console.warn(`Failed to initialize Milestone Storage: ${error}`);
@@ -982,25 +893,131 @@ export class MilestoneStorage {
 
     static getMilestone(id) {
         try {
+            // Ensure the database is initialized
+            if (!this.#milestoneDB) {
+                Logger.log("Milestone database not initialized.", "WARN", "MILESTONE");
+                return null;
+            }
             return this.#milestoneDB.has(id) ? this.#milestoneDB.get(id) : null;
         } catch (error) {
-            Logger.log(`Error getting collection ${id}: ${error}`, "ERROR", "STORAGE");
+            Logger.log(`Error getting milestone ${id}: ${error}`, "ERROR", "MILESTONE");
             return null;
         }
     }
 
     static async saveMilestone(milestone) {
         try {
-            if (!milestone?.id) {
-                throw new Error('Invalid collection object');
+             // Ensure the database is initialized
+            if (!this.#milestoneDB) {
+                Logger.log("Milestone database not initialized. Cannot save.", "ERROR", "MILESTONE");
+                return false;
             }
+            if (!milestone?.id) {
+                throw new Error('Invalid milestone object, missing id');
+            }
+            // Ensure collections is an array
+            if (milestone.collections && !Array.isArray(milestone.collections)) {
+                 Logger.log(`Milestone ${milestone.id} has invalid collections format. Expected array.`, "WARN", "MILESTONE");
+                 // Attempt to fix or skip saving depending on desired behavior
+                 // For now, let's log and potentially skip saving this part or the whole milestone
+                 // Or ensure the source data in MILESTONES is correct.
+            }
+
             this.#milestoneDB.set(milestone.id, milestone);
             return true;
         } catch (error) {
-            Logger.log(`Error saving collection ${collection?.id}: ${error}`, "ERROR", "STORAGE");
+            // Use milestone?.id for safer logging in case milestone itself is null/undefined
+            Logger.log(`Error saving milestone ${milestone?.id}: ${error}`, "ERROR", "MILESTONE");
             return false;
         }
     }
 
+    /**
+     * Clears all milestones from storage and reloads them from the configuration file.
+     * @returns {Promise<boolean>} True if successful, false otherwise.
+     */
+    static async resetMilestonesToDefaults() {
+        try {
+            Logger.log("Starting reset of milestones to defaults...", "INFO", "MILESTONE_STORAGE");
 
+             // Ensure the database is initialized
+            if (!this.#milestoneDB) {
+                Logger.log("Milestone database not initialized. Cannot reset.", "ERROR", "MILESTONE_STORAGE");
+                return false;
+            }
+
+            // 1. Clear all existing milestones from storage
+            // Assuming JsonDatabase doesn't have a clear method, iterate and delete
+            const keys = Array.from(this.#milestoneDB.keys());
+            keys.forEach(key => this.#milestoneDB.delete(key));
+            // Alternatively, if JsonDatabase allows resetting its internal store:
+            // this.#milestoneDB = new JsonDatabase("skychievments_milestones"); // Re-initialize to clear
+
+            Logger.log(`Cleared ${keys.length} existing milestones from storage.`, "DEBUG", "MILESTONE_STORAGE");
+
+            // 2. Reload default milestones from the config file
+            let loadedCount = 0;
+            let failedCount = 0;
+            // Iterate through the groups in MILESTONES
+            for (const groupKey in MILESTONES) {
+                const milestoneGroup = MILESTONES[groupKey];
+                 // Check if the group itself is an array of milestones
+                 if (Array.isArray(milestoneGroup)) {
+                    for (const milestone of milestoneGroup) {
+                        if (milestone && milestone.id) {
+                            const saved = await this.saveMilestone(milestone);
+                            if (saved) {
+                                loadedCount++;
+                            } else {
+                                failedCount++;
+                                Logger.log(`Failed to reload default milestone: ${milestone.id} in group ${groupKey}`, "WARN", "MILESTONE_STORAGE");
+                            }
+                        } else {
+                             failedCount++;
+                             Logger.log(`Skipping invalid milestone entry in group ${groupKey}`, "WARN", "MILESTONE_STORAGE");
+                        }
+                    }
+                 } else {
+                    Logger.log(`Skipping non-array group in MILESTONES: ${groupKey}`, "WARN", "MILESTONE_STORAGE");
+                 }
+            }
+
+            if (failedCount > 0) {
+                 Logger.log(`Successfully reloaded ${loadedCount} default milestones, but failed to load ${failedCount}.`, "WARN", "MILESTONE_STORAGE");
+            } else {
+                 Logger.log(`Successfully reloaded ${loadedCount} default milestones.`, "INFO", "MILESTONE_STORAGE");
+            }
+
+            return failedCount === 0; // Return true only if all milestones loaded successfully
+        } catch (error) {
+            Logger.log(`Failed to reset milestones to defaults: ${error}`, "ERROR", "MILESTONE_STORAGE");
+            console.error("Milestone Reset Error:", error); // Also log to console for visibility
+            return false;
+        }
+    }
+
+     /**
+     * Loads default milestones from the config file if the storage is empty.
+     * @returns {Promise<boolean>} True if defaults were loaded or already present, false on error.
+     */
+    static async loadDefaultsIfNeeded() {
+        try {
+            if (!this.#milestoneDB) {
+                Logger.log("Milestone database not initialized. Cannot load defaults.", "ERROR", "MILESTONE_STORAGE");
+                return false;
+            }
+
+            const keys = Array.from(this.#milestoneDB.keys());
+            if (keys.length === 0) {
+                Logger.log("Milestone storage is empty. Loading defaults...", "INFO", "MILESTONE_STORAGE");
+                return await this.resetMilestonesToDefaults(); // Use the reset logic to load
+            } else {
+                Logger.log("Milestone storage already contains data. Skipping default load.", "DEBUG", "MILESTONE_STORAGE");
+                return true; // Already populated
+            }
+        } catch (error) {
+            Logger.log(`Error during loadDefaultsIfNeeded: ${error}`, "ERROR", "MILESTONE_STORAGE");
+            return false;
+        }
+    }
 }

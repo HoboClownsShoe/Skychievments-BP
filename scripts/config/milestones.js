@@ -22,7 +22,7 @@ export const MILESTONES = {
                 commands: [{}],  // commands to run
                 requirements: [
                     {
-                        type: "break",  
+                        type: "onBreak",  
                         itemId: "minecraft:cobblestone",
                         amount: 1
                     }
@@ -55,7 +55,7 @@ export const MILESTONES = {
                 commands: [{}],
                 requirements: [
                     {
-                        type: "break",
+                        type: "onBreak",
                         itemId: "minecraft:cobblestone",
                         amount: 5
                     },
@@ -95,7 +95,7 @@ export const MILESTONES = {
                 commands: [{}],
                 requirements: [
                     {
-                        type: "break",
+                        type: "onBreak",
                         itemId: "minecraft:cobblestone",
                         amount: 10
                     }
@@ -124,7 +124,7 @@ export const MILESTONES = {
                 commands: [{}],
                 requirements: [
                     {
-                        type: "break",
+                        type: "onBreak",
                         itemId: "minecraft:cobblestone",
                         amount: 1000
                     }
@@ -154,15 +154,15 @@ export const MILESTONES = {
                 strings: [{}],
                 requirements: [
                     {
-                        "type": "break",
-                        "itemId": "minecraft:cobblestone",
-                        "amount": 10000
+                        type: "onBreak",
+                        itemId: "minecraft:cobblestone",
+                        amount: 10000
                     }
                 ],
-                "rewards": [
+                rewards: [
                     {
-                        "type": "point",
-                        "amount": 75
+                        type: "point",
+                        amount: 75
                     },
                     {
                         type: 'message',
@@ -173,25 +173,25 @@ export const MILESTONES = {
                 ]
             },
             {
-                "id": "mc1_6",
-                "type": "milestone",
-                "tier": 6,
-                "slot": 30,
-                "displayName": "Stone Miner VI",
-                "description": "Mine 100K cobblestone blocks",
-                "icon": "textures/items/iron_pickaxe",
-                "commands": [{}],
-                "requirements": [
+                id: "mc1_6",
+                type: "milestone",
+                tier: 6,
+                slot: 30,
+                displayName: "Stone Miner VI",
+                description: "Mine 100K cobblestone blocks",
+                icon: "textures/items/iron_pickaxe",
+                commands: [{}],
+                requirements: [
                     {
-                        "type": "break",
-                        "itemId": "minecraft:cobblestone",
-                        "amount": 100000
+                        type: "onBreak",
+                        itemId: "minecraft:cobblestone",
+                        amount: 100000
                     }
                 ],
-                "rewards": [
+                rewards: [
                     {
-                        "type": "point",
-                        "amount": 100
+                        type: "point",
+                        amount: 100
                     },
                     {
                         type: 'message',
@@ -202,25 +202,25 @@ export const MILESTONES = {
                 ]
             },
             {
-                "id": "mc1_7",
-                "type": "milestone",
-                "tier": 7,
-                "slot": 32,
-                "displayName": "Stone Miner VII",
-                "description": "Mine 1M cobblestone blocks",
-                "icon": "textures/items/iron_pickaxe",
-                "commands": [{}],
-                "requirements": [
+                id: "mc1_7",
+                type: "milestone",
+                tier: 7,
+                slot: 32,
+                displayName: "Stone Miner VII",
+                description: "Mine 1M cobblestone blocks",
+                icon: "textures/items/iron_pickaxe",
+                commands: [{}],
+                requirements: [
                     {
-                        "type": "break",
-                        "itemId": "minecraft:cobblestone",
-                        "amount": 1000000
+                        type: "onBreak",
+                        itemId: "minecraft:cobblestone",
+                        amount: 1000000
                     }
                 ],
-                "rewards": [
+                rewards: [
                     {
-                        "type": "point",
-                        "amount": 200
+                        type: "point",
+                        amount: 200
                     },
                     {
                         type: 'message',
@@ -231,26 +231,26 @@ export const MILESTONES = {
                 ]
             },
             {
-                "id": "mc1_8",
-                "type": "milestone",
-                "tier": 8,
-                "slot": 34,
-                "displayName": "Stone Miner VIII",
-                "description": "Mine 2M cobblestone blocks",
-                "icon": "textures/items/iron_pickaxe",
-                "commands": [{}],
-                "strings": [{}],
-                "requirements": [
+                id: "mc1_8",
+                type: "milestone",
+                tier: 8,
+                slot: 34,
+                displayName: "Stone Miner VIII",
+                description: "Mine 2M cobblestone blocks",
+                icon: "textures/items/iron_pickaxe",
+                commands: [{}],
+                strings: [{}],
+                requirements: [
                     {
-                        "type": "break",
-                        "itemId": "minecraft:cobblestone",
-                        "amount": 2000000
+                        type: "onBreak",
+                        itemId: "minecraft:cobblestone",
+                        amount: 2000000
                     }
                 ],
-                "rewards": [
+                rewards: [
                     {
-                        "type": "point",
-                        "amount": 500
+                        type: "point",
+                        amount: 500
                     },
                     {
                         type: 'message',
@@ -267,7 +267,7 @@ export const MILESTONES = {
             //         "id" : "cobblestone_1"  // quests needed to be completed first
             //     }
             // ],
-            activatedBy: ["ibt1"],
+            activatedBy: ["itb1_3"],
             cancellable: false,  // can you cancel the quest
             repeatable: {  // can you repeat the quest
                 enabled : false,
@@ -281,17 +281,17 @@ export const MILESTONES = {
     ],
     "toolBreaker": [
         {
-            "id": "tb1",
-            "type": "milestone",
-            "level": "beginner",
-            "parentId": "toolBreaker",
-            "displayName": "Gotta break them all",
-            "description": "Break all types of tools",
-            "lore" : "lore Lore l0re",
-            "icon": "textures/ui/groupIcons/iron_sword_3.png",
+            id: "tb1",
+            type: "milestone",
+            level: "beginner",
+            parentId: "toolBreaker",
+            displayName: "Gotta break them all",
+            description: "Break all types of tools",
+            lore : "lore Lore l0re",
+            icon: "textures/ui/groupIcons/iron_sword_3.png",
             slot: 11,
             isHidden: true, 
-            "collections": [                 
+            collections: [                 
                 {
                     id: "tb1_1",
                     tier: 1,
@@ -307,7 +307,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "allBrokenInCategory",  
+                            type: "allBrokenToolInCategory",  
                             category: "woodenTool",
                             amount: 1
                         }
@@ -340,7 +340,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "allBrokenInCategory",  
+                            type: "allBrokenToolInCategory",  
                             category: "stoneTool",
                             amount: 1
                         }
@@ -373,7 +373,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "allBrokenInCategory",  
+                            type: "allBrokenToolInCategory",  
                             category: "ironTool",
                             amount: 1
                         }
@@ -406,7 +406,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "allBrokenInCategory",  
+                            type: "allBrokenToolInCategory",  
                             category: "diamondTool",
                             amount: 1
                         }
@@ -439,7 +439,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "allBrokenInCategory",  
+                            type: "allBrokenToolInCategory",  
                             category: "netheriteTool",
                             amount: 1
                         }
@@ -458,56 +458,56 @@ export const MILESTONES = {
                     ]
                 }                    
             ],
-            "options": {
+            options: {
             // "prerequisites":[
             //     {
             //         "id" : "cobblestone_1"  // quests needed to be completed first
             //     }
             // ],
-            "activatedBy": ["ibt1"],
-            "cancellable": false,  // can you cancel the quest
-            "repeatable": {  // can you repeat the quest
-                "enabled" : false,
-                "cooldown" : 10  // how long to wait before repeating
+            activatedBy: ["itb1_10"],
+            cancellable: false,  // can you cancel the quest
+            repeatable: {  // can you repeat the quest
+                enabled : false,
+                cooldown : 10  // how long to wait before repeating
             },
-            "timeLimit": 0, // in minutes
-            "enabled": true,
-            "order": 0
+            timeLimit: 0, // in minutes
+            enabled: true,
+            order: 0
             }        
         }
     ],
     "murder_milestones":[
         {
-        "id": "mr1",
-        "type": "milestone",
-        "level": "beginner",
-        "parentId": "murder_milestones",
-        "displayName": "Are you a cold blooded killer??",
-        "description": "",
-        "lore" : "Redrum",
-        "icon": "textures/ui/groupIcons/sword.png", 
+        id: "mr1",
+        type: "milestone",
+        level: "beginner",
+        parentId: "murder_milestones",
+        displayName: "Are you a cold blooded killer??",
+        description: "",
+        lore : "Redrum",
+        icon: "textures/ui/groupIcons/sword.png", 
         slot: 12,
         isHidden: true,
-        "collections": [  // collecitons that are part of this milestone
+        collections: [  // collecitons that are part of this milestone
             {
-                "id": "mr1_1",
-                "tier": 1,
-                "slot": 13,
-                "displayName": "Murder I",
-                "description": "Kill 10 cows",
-                "icon": "textures/items/diamond_sword",
-                "commands": [{}],  // commands to run
-                "requirements": [
+                id: "mr1_1",
+                tier: 1,
+                slot: 13,
+                displayName: "Murder I",
+                description: "Kill 10 cows",
+                icon: "textures/items/diamond_sword",
+                commands: [{}],  // commands to run
+                requirements: [
                     {
-                        "type": "anyMob",  
-                        "itemId": "minecraft:cow",
-                        "amount": 10
+                        type: "anyMob",  
+                        itemId: "minecraft:cow",
+                        amount: 10
                     }
                 ],
-                "rewards": [
+                rewards: [
                     {
-                        "type": "point",
-                        "amount": 10
+                        type: "point",
+                        amount: 10
                     },
                     {
                         type: 'message',
@@ -518,56 +518,56 @@ export const MILESTONES = {
                 ]
             }
         ],
-        "options": {
+        options: {
             // "prerequisites":[
             //     {
             //         "id" : "cobblestone_1"  // quests needed to be completed first
             //     }
             // ],
-            "activatedBy": [],
-            "cancellable": false,  // can you cancel the quest
-            "repeatable": {  // can you repeat the quest
-                "enabled" : false,
-                "cooldown" : 10  // how long to wait before repeating
+            activatedBy: ["itb1_17"],
+            cancellable: false,  // can you cancel the quest
+            repeatable: {  // can you repeat the quest
+                enabled : false,
+                cooldown : 10  // how long to wait before repeating
             },
-            "timeLimit": 0, // in minutes
-            "enabled": true,
-            "order": 0
+            timeLimit: 0, // in minutes
+            enabled: true,
+            order: 0
         }     
         }
     ],
     "traveller_milestones":[
         {
-        "id": "tr1",
-        "type": "milestone",
-        "level": "beginner",
-        "parentId": "traveller_milestones",
-        "displayName": "Get them boots on!!",
-        "description": "",
-        "lore" : "would you walk 1000 miles",
-        "icon": "textures/ui/groupIcons/boot.png",  
+        id: "tr1",
+        type: "milestone",
+        level: "beginner",
+        parentId: "traveller_milestones",
+        displayName: "Get them boots on!!",
+        description: "",
+        lore : "would you walk 1000 miles",
+        icon: "textures/ui/groupIcons/boot.png",  
         slot: 13,
         isHidden: true,
-        "collections": [  // collecitons that are part of this milestone
+        collections: [  // collecitons that are part of this milestone
             {
-                "id": "tr1_1",
-                "tier": 1,
-                "slot": 10,
-                "displayName": "Walker I",
-                "icon": "textures/items/iron_boots",
-                "description": "Walk 100 meters",
-                "commands": [{}],  // commands to run
-                "requirements": [
+                id: "tr1_1",
+                tier: 1,
+                slot: 10,
+                displayName: "Walker I",
+                icon: "textures/items/iron_boots",
+                description: "Walk 100 meters",
+                commands: [{}],  // commands to run
+                requirements: [
                     {
-                        "type": "walk",  
-                        "itemId": "",
-                        "amount": 10000
+                        type: "walk",  
+                        itemId: "",
+                        amount: 10000
                     }
                 ],
-                "rewards": [
+                rewards: [
                     {
-                        "type": "point",
-                        "amount": 10
+                        type: "point",
+                        amount: 10
                     },
                     {
                         type: 'message',
@@ -578,21 +578,21 @@ export const MILESTONES = {
                 ]
             }
         ],
-        "options": {
+        options: {
             // "prerequisites":[
             //     {
             //         "id" : "itb1"  // quests needed to be completed first
             //     }
             // ],
-            "activatedBy": ["mr1"],
-            "cancellable": false,  // can you cancel the quest
-            "repeatable": {  // can you repeat the quest
-                "enabled" : false,
-                "cooldown" : 10  // how long to wait before repeating
+            activatedBy: ["mr1"],
+            cancellable: false,  // can you cancel the quest
+            repeatable: {  // can you repeat the quest
+                enabled : false,
+                cooldown : 10  // how long to wait before repeating
             },
-            "timeLimit": 0, // in minutes
-            "enabled": true,
-            "order": 0
+            timeLimit: 0, // in minutes
+            enabled: true,
+            order: 0
         }     
         }
     ],
@@ -606,14 +606,14 @@ export const MILESTONES = {
         description: "So you've loaded up Minecraft, now what??",
         lore : "Step 1, Mine\nStep 2 erm....",
         icon: "textures/ui/QuestIcons/grass_block.png",
-        background: "textures/ui/QuestBackgrounds/chestUI_90_InTheBeginning", 
-        slot: 31,
+        background: "textures/ui/QuestBackgrounds/qaeInTheBeginning_v2", 
+        slot: 456,
         isHidden: false,
         collections: [
             {
                 id: "itb1_1",
                 tier: 1,
-                slot: 4,
+                slot: 444,
                 displayName: "Touch Grass",
                 description: "Get on your knees and Dig!!",
                 icon: "textures/ui/QuestIcons/grass_block.png",                
@@ -641,16 +641,16 @@ export const MILESTONES = {
             {
                 id: "itb1_2",
                 tier: 2,
-                slot: 13,
+                slot: 447,
                 displayName: "Punching Wood",
-                description: "break you first log",
+                description: "Break you first log\nAny log will do",
                 icon: "textures/ui/QuestIcons/oak_log.png",                
                 commands: [{}],  // commands to run
                 requirements: [
                     {
                         type: "onBreakAnyInCategory",  
                         category: "log",
-                        amount: 1
+                        amount: 10
                     }
                 ],
                 rewards: [
@@ -669,7 +669,7 @@ export const MILESTONES = {
             {
                 id: "itb1_3",
                 tier: 3,
-                slot: 22,
+                slot: 450,
                 displayName: "Getting Crafty",
                 description: "Place down your first of many Crafting tables",
                 icon: "textures/ui/QuestIcons/crafting_table.png",
@@ -682,8 +682,8 @@ export const MILESTONES = {
                 commands: [{}],  // commands to run
                 requirements: [
                     {
-                        type: "onPlaceBlock",  
-                        category: "minecraft:crafting_table",
+                        type: "onPlace",  
+                        itemId: "minecraft:crafting_table",
                         amount: 1
                     }
                 ],
@@ -703,7 +703,7 @@ export const MILESTONES = {
             {
                 id: "itb1_4",
                 tier: 4,
-                slot: 31,
+                slot: 454,
                 displayName: "You never forget your first",
                 description: "Craft some wooden tools",
                 icon: "textures/ui/QuestIcons/wood_pickaxe.png",
@@ -732,16 +732,21 @@ export const MILESTONES = {
             {
                 id: "itb1_5",
                 tier: 5,
-                slot: 19,
+                slot: 577,
                 displayName: "Humble Bumble",
-                description: "Totally doesnt look like an elephants scrotum",
+                description: "Craft a Bundle\nTotally doesnt look like an elephants scrotum",
                 icon: "textures/ui/QuestIcons/bundle.png",
-                unlockedBy: 3,               
+                unlockedBy: 3,
+                type: "",
+                reference: {
+                    milestoneId: "",
+                    mode: ""   
+                },      
                 commands: [{}],  // commands to run
                 requirements: [
                     {
                         type: "collect",  
-                        category: "minecraft:bundle",
+                        itemId: "minecraft:bundle",
                         amount: 1
                     }
                 ],
@@ -761,11 +766,16 @@ export const MILESTONES = {
             {
                 id: "itb1_6",
                 tier: 6,
-                slot: 28,
+                slot: 766,
                 displayName: "Nap Time",
                 description: "You've worked hard, place a bed, take a nap",
                 icon: "textures/ui/QuestIcons/bed_red.png",
-                unlockedBy: 3,               
+                unlockedBy: 3,
+                type: "",
+                reference: {
+                    milestoneId: "",
+                    mode: ""   
+                },               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
@@ -790,11 +800,16 @@ export const MILESTONES = {
             {
                 id: "itb1_7",
                 tier: 7,
-                slot: 37,
+                slot: 672,
                 displayName: "Stationary Storage",
                 description: "Pockets full of crap??, Craft and place a chest for storing your usless junk",
                 icon: "textures/ui/QuestIcons/chest.png",
-                unlockedBy: 3,               
+                unlockedBy: 3,
+                type: "",
+                reference: {
+                    milestoneId: "",
+                    mode: ""   
+                },               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
@@ -819,16 +834,21 @@ export const MILESTONES = {
             {
                 id: "itb1_8",
                 tier: 8,
-                slot: 46,
+                slot: 582,
                 displayName: "Hot Topic",
-                description: "Gotta get cookin",
+                description: "Gotta get cookin\n\n Place down a furnace",
                 icon: "textures/ui/QuestIcons/furnace.png",
-                unlockedBy: 3,               
+                unlockedBy: 3,
+                type: "",
+                reference: {
+                    milestoneId: "",
+                    mode: ""   
+                },               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
-                        type: "onPlaceBlock",  
-                        category: "minecraft:furnace",
+                        type: "onPlace",  
+                        itemId: "minecraft:furnace",
                         amount: 1
                     }
                 ],
@@ -848,11 +868,16 @@ export const MILESTONES = {
             {
                 id: "itb1_9",
                 tier: 9,
-                slot: 48,
+                slot: 457,
                 displayName: "Getting an Upgrade",
-                description: "You've hit the StoneAge, upgrade that tool belt",
+                description: "You've hit the StoneAge, upgrade that tool belt\n\nCraft Stone Tools",
                 icon: "textures/ui/QuestIcons/stone_pickaxe.png",
-                unlockedBy: 3,               
+                unlockedBy: 3, 
+                type: "",
+                reference: {
+                    milestoneId: "",
+                    mode: ""   
+                },              
                 commands: [{}],  // commands to run
                 requirements: [
                     {
@@ -877,15 +902,20 @@ export const MILESTONES = {
             {
                 id: "itb1_10",
                 tier: 10,
-                slot: 32,
+                slot: 580,
                 displayName: "awwww, it broke!",
-                description: "smash shit till it breaks in you hand! simples",
+                description: "smash shit till it breaks in you hand! simples\n\nBreak any of you tools",
                 icon: "textures/ui/QuestIcons/wooden_pickaxe_2.png",
-                unlockedBy: 4,               
+                unlockedBy: 4,
+                type: "",
+                reference: {
+                    milestoneId: "",
+                    mode: ""   
+                },               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
-                        type: "onBreakAnyToolInCategory",  
+                        type: "anyBrokenToolInCategory",  
                         category: "tools",
                         amount: 1
                     }
@@ -906,17 +936,24 @@ export const MILESTONES = {
             {
                 id: "itb1_11",
                 tier: 11,
-                slot: 2,
+                slot: 633,
                 displayName: "Stayin' Alive",
-                description: "Survive a whole day and night",
+                description: "Survive a whole day and night\n\nDont die, simples",
                 icon: "textures/ui/QuestIcons/clock_item.png",
-                unlockedBy: 1,               
+                unlockedBy: 1,
+                type: "",
+                reference: {
+                    milestoneId: "",
+                    mode: ""   
+                },               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
                         type: "timePassedSince",
-                        event: "firstSpawn",                          
-                        amount: 20
+                        event: "tier_activated",                          
+                        tier_id: "itb1_11",
+                        milestoneId: "itb1",
+                        amount: 1
                     }
                 ],
                 rewards: [
@@ -927,7 +964,7 @@ export const MILESTONES = {
                     {
                         type: 'message',
                         stage: 'complete',
-                        content: 'The BeeGees would be proud, the ones that a left that is\nHere have §g10 Quest Points§r',
+                        content: 'The BeeGees would be proud, well...the one thats alive would be\nHere have §g10 Quest Points§r',
                         messageType: 'toast'
                     },
                 ]
@@ -935,16 +972,16 @@ export const MILESTONES = {
             {
                 id: "itb1_12",
                 tier: 12,
-                slot: 63,
+                slot: 709,
                 displayName: "Nom Nom Nom",
-                description: "Catch it, Kill It, Cook it",
+                description: "Catch it, Kill It, Cook it\n\nEat cooked food",
                 icon: "textures/ui/QuestIcons/chicken_cooked.png",
-                unlockedBy: 8,               
+                unlockedBy: [8,13],               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
-                        type: "onPlayerConsumeAnyInCategory",
-                        event: "cookedFood",                          
+                        type: "onEatAnyInCategory",
+                        category: "cookedFood",                          
                         amount: 1
                     }
                 ],
@@ -964,16 +1001,16 @@ export const MILESTONES = {
             {
                 id: "itb1_13",
                 tier: 13,
-                slot: 65,
+                slot: 584,
                 displayName: "COAL!! always believe in your soul! ",
-                description: "its just squished up dinosaurs",
+                description: "its just squished up dinosaurs\n\nMine some coal ore",
                 icon: "textures/ui/QuestIcons/coal.png",
                 unlockedBy: 9,               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
-                        type: "onBreakBlock",
-                        event: "minecraft:coal_ore",                          
+                        type: "onBreak",
+                        itemId: "minecraft:coal_ore",                      
                         amount: 1
                     }
                 ],
@@ -993,17 +1030,17 @@ export const MILESTONES = {
             {
                 id: "itb1_14",
                 tier: 14,
-                slot: 7,
+                slot: 322,
                 displayName: "Crop-ping all day",
-                description: "Get in them there fields",
+                description: "Get in them there fields\n\nObtain some crops",
                 icon: "textures/ui/QuestIcons/wheat.png",
                 unlockedBy: 2,               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
                         type: "collectAnyInCategory",
-                        event: "crop",                          
-                        amount: 1
+                        category: "crops",                          
+                        amount: 16
                     }
                 ],
                 rewards: [
@@ -1022,17 +1059,17 @@ export const MILESTONES = {
             {
                 id: "itb1_15",
                 tier: 15,
-                slot: 6,
+                slot: 320,
                 displayName: "Forrestry",
-                description: "Stop the deforestation, replant what you cut down ",
+                description: "Stop the deforestation, replant what you cut down\n\nObtain one of the saplings",
                 icon: "textures/ui/QuestIcons/sapling_oak.png",
                 unlockedBy: 2,               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
                         type: "collectAnyInCategory",
-                        event: "saplings",                          
-                        amount: 1
+                        category: "saplings",                          
+                        amount: 8
                     }
                 ],
                 rewards: [
@@ -1051,16 +1088,16 @@ export const MILESTONES = {
             {
                 id: "itb1_16",
                 tier: 16,
-                slot: 15,
+                slot: 264,
                 displayName: "Arrrgghh Kill it",
-                description: "There be scary things in the dark, kill them",
+                description: "There be scary things in the dark, kill them\n\nSlaughter a hostile mob",
                 icon: "textures/ui/QuestIcons/rotten_flesh.png",
                 unlockedBy: 4,               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
-                        type: "onPlayerKillAnyInCategory",
-                        event: "hostileMobs",                          
+                        type: "killAnyInCategory",
+                        category: "hostileMobs",                          
                         amount: 1
                     }
                 ],
@@ -1080,16 +1117,16 @@ export const MILESTONES = {
             {
                 id: "itb1_17",
                 tier: 17,
-                slot: 24,
+                slot: 266,
                 displayName: "Its got to be done, just dont look",
-                description: "KIll a passive mob",
+                description: "Sometimes animal die\n\nKill a passive mob",
                 icon: "textures/ui/QuestIcons/egg_cow.png",
                 unlockedBy: 4,               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
-                        type: "onPlayerKillAnyInCategory",
-                        event: "hostileMobs",                          
+                        type: "killAnyInCategory",
+                        category: "passiveMobs",                          
                         amount: 1
                     }
                 ],
@@ -1109,16 +1146,16 @@ export const MILESTONES = {
             {
                 id: "itb1_18",
                 tier: 18,
-                slot: 42,
+                slot: 460,
                 displayName: "Hard Rock and METALLLLLLL!!!",
-                description: "Get to smelting some ingots",
+                description: "Get to smelting some ingots\n\nGet some Iron or Copper ingots",
                 icon: "textures/ui/QuestIcons/iron_ingot.png",
                 unlockedBy: 8,               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
                         type: "collectAnyInCategory",
-                        event: "metalIngots",                          
+                        category: "metalIngots",                          
                         amount: 1
                     }
                 ],
@@ -1138,16 +1175,16 @@ export const MILESTONES = {
             {
                 id: "itb1_19",
                 tier: 19,
-                slot: 44,
+                slot: 586,
                 displayName: "Iron Mans utensils",
-                description: "Upgrade your tools to the Iron Age",
+                description: "Upgrade your tools to the Iron Age\n\nCraft all the Iron Tools and Weapons",
                 icon: "textures/ui/QuestIcons/iron_pickaxe.png",
                 unlockedBy: 18,               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
-                        type: "collectAnyInCategory",
-                        event: "ironTools",                          
+                        type: "collectAllInCategory",
+                        category: "ironTools",                          
                         amount: 1
                     }
                 ],
@@ -1159,7 +1196,7 @@ export const MILESTONES = {
                     {
                         type: 'message',
                         stage: 'complete',
-                        content: 'I "am" Iron Man\nHere have §g10 Quest Points§r',
+                        content: 'I am Iron Man\nHere have §g10 Quest Points§r',
                         messageType: 'toast'
                     },
                 ]
@@ -1167,16 +1204,16 @@ export const MILESTONES = {
             {
                 id: "itb1_20",
                 tier: 20,
-                slot: 51,
+                slot: 463,
                 displayName: "oooooh Shiney",
-                description: "Find your first diamonds, they're blue, you can miss them",
+                description: "Find your first diamonds, they're blue, you can miss them\n\nMine some Diamond ore",
                 icon: "textures/ui/QuestIcons/diamond.png",
                 unlockedBy: 18,               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
-                        type: "onBreakBlock",
-                        event: "minecraft:diamond",                          
+                        type: "onBreak",
+                        itemId: "minecraft:diamond_ore",                          
                         amount: 1
                     }
                 ],
@@ -1196,16 +1233,16 @@ export const MILESTONES = {
             {
                 id: "itb1_21",
                 tier: 21,
-                slot: 26,
+                slot: 712,
                 displayName: "Now we're progressing",
-                description: "Find that red stuff in the rocks",
+                description: "Find that red stuff in the rocks\n\nMine some Redstone ore",
                 icon: "textures/ui/QuestIcons/redstone_dust.png",
                 unlockedBy: 18,               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
-                        type: "onBreakBlock",
-                        event: "minecraft:redstone_ore",                          
+                        type: "onBreak",
+                        itemId: "minecraft:lit_redstone_ore",                          
                         amount: 1
                     }
                 ],
@@ -1225,16 +1262,16 @@ export const MILESTONES = {
             {
                 id: "itb1_22",
                 tier: 22,
-                slot: 61,
+                slot: 337,
                 displayName: "Careful, they're sharp",
-                description: "Get them rusty old tools chucked out, Get some shiney new blue ones",
+                description: "Get them rusty old tools chucked out, Get some shiney new blue ones\n\nCraft some Diamond Tools",
                 icon: "textures/ui/QuestIcons/diamond_sword.png",
                 unlockedBy: 20,               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
                         type: "collectAnyInCategory",
-                        event: "diamondTools",                          
+                        category: "diamondTools",                          
                         amount: 1
                     }
                 ],
@@ -1254,16 +1291,17 @@ export const MILESTONES = {
             {
                 id: "itb1_23",
                 tier: 23,
-                slot: 59,
+                slot: 466,
                 displayName: "Its hot, Its dangerous, Its very Red",
-                description: "Head to the nether, Just close your eyes and jump in",
+                description: "Just close your eyes and jump in\n\nGo into the Nether",
                 icon: "textures/ui/QuestIcons/flint_and_steel.png",
                 unlockedBy: 18,               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
                         type: "dimensionChange",
-                        event: "nether"
+                        dimension: "minecraft:nether",
+                        amount: 1
                     }
                 ],
                 rewards: [
@@ -1282,16 +1320,16 @@ export const MILESTONES = {
             {
                 id: "itb1_24",
                 tier: 24,
-                slot: 76,
+                slot: 593,
                 displayName: "Star of wonder, Star of Light",
-                description: "Dead easy, just kill the wither",
+                description: "Dead easy, just kill the wither\n\nObtain a Nether Star",
                 icon: "textures/ui/QuestIcons/nether_star.png",
                 unlockedBy: 23,               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
                         type: "collect",
-                        event: "minecraft:nether_star",                          
+                        itemId: "minecraft:nether_star",                          
                         amount: 1
                     }
                 ],
@@ -1311,16 +1349,16 @@ export const MILESTONES = {
             {
                 id: "itb1_25",
                 tier: 25,
-                slot: 78,
+                slot: 719,
                 displayName: "Chuck it and see",
-                description: "Craft up some Ender Eyes to hunt down the stringhold",
+                description: "Craft up some Ender Eyes to hunt down the stringhold\n\nObtain some Eyes of Ender",
                 icon: "textures/ui/QuestIcons/ender_eye.png",
                 unlockedBy: 23,               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
                         type: "collect",
-                        event: "minecraft:ender_eye",                          
+                        itemId: "minecraft:ender_eye",                          
                         amount: 1
                     }
                 ],
@@ -1340,16 +1378,16 @@ export const MILESTONES = {
             {
                 id: "itb1_26",
                 tier: 26,
-                slot: 79,
+                slot: 470,
                 displayName: "Nothing to see here",
                 description: "Get to the End",
                 icon: "textures/ui/QuestIcons/end_portal_frame.png",
-                unlockedBy: 23,               
+                unlockedBy: 25,               
                 commands: [{}],  // commands to run
                 requirements: [
                     {
                         type: "dimensionChange",
-                        event: "end",                          
+                        dimension: "minecraft:the_end",                          
                         amount: 1
                     }
                 ],
@@ -2098,7 +2136,7 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/stone_pickaxe.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 49,
+            slot: 645,
             isHidden: false,
             collections: [
                 {
@@ -2111,7 +2149,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
+                            type: "onBreak",  
                             category: "minecraft:stone",
                             amount: 1
                         }
@@ -2180,7 +2218,7 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/sapling_oak.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 10,
+            slot: 167,
             isHidden: false,
             collections: [
                 {
@@ -2193,7 +2231,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
+                            type: "onBreak",  
                             category: "minecraft:stone",
                             amount: 1
                         }
@@ -2236,7 +2274,7 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/wheat.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 70,
+            slot: 745,
             isHidden: false,
             collections: [
                 {
@@ -2249,7 +2287,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
+                            type: "onBreak",  
                             category: "minecraft:stone",
                             amount: 1
                         }
@@ -2292,7 +2330,7 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/crafting_table.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 33,
+            slot: 368,
             isHidden: false,
             collections: [
                 {
@@ -2305,7 +2343,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
+                            type: "onBreak",  
                             category: "minecraft:stone",
                             amount: 1
                         }
@@ -2348,7 +2386,7 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/chicken_cooked.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 28,
+            slot: 356,
             isHidden: false,
             collections: [
                 {
@@ -2361,7 +2399,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
+                            type: "onBreak",  
                             category: "minecraft:stone",
                             amount: 1
                         }
@@ -2404,7 +2442,7 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/compass_item.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 3,
+            slot: 202,
             isHidden: false,
             collections: [
                 {
@@ -2417,7 +2455,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
+                            type: "onBreak",  
                             category: "minecraft:stone",
                             amount: 1
                         }
@@ -2460,7 +2498,7 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/redstone_dust.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 77,
+            slot: 805,
             isHidden: false,
             collections: [
                 {
@@ -2473,7 +2511,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
+                            type: "onBreak",  
                             category: "minecraft:stone",
                             amount: 1
                         }
@@ -2516,7 +2554,7 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/netherrack.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 55,
+            slot: 640,
             isHidden: false,
             collections: [
                 {
@@ -2529,7 +2567,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
+                            type: "onBreak",  
                             category: "minecraft:stone",
                             amount: 1
                         }
@@ -2572,7 +2610,7 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/end_portal_frame.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 46,
+            slot: 514,
             isHidden: false,
             collections: [
                 {
@@ -2585,7 +2623,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
+                            type: "onBreak",  
                             category: "minecraft:stone",
                             amount: 1
                         }
@@ -2628,7 +2666,7 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/rotten_flesh.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 52,
+            slot: 556 ,
             isHidden: false,
             collections: [
                 {
@@ -2641,7 +2679,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
+                            type: "onBreak",  
                             category: "minecraft:stone",
                             amount: 1
                         }
@@ -2684,7 +2722,7 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/egg_cow.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 61,
+            slot: 651,
             isHidden: false,
             collections: [
                 {
@@ -2697,7 +2735,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
+                            type: "onBreak",  
                             category: "minecraft:stone",
                             amount: 1
                         }
@@ -2740,7 +2778,7 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/diamond_sword.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 66,
+            slot: 769,
             isHidden: false,
             collections: [
                 {
@@ -2753,7 +2791,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
+                            type: "onBreak",  
                             category: "minecraft:stone",
                             amount: 1
                         }
@@ -2796,7 +2834,7 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/flower_tulip_orange.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 19,
+            slot: 261,
             isHidden: false,
             collections: [
                 {
@@ -2809,7 +2847,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
+                            type: "onBreak",  
                             category: "minecraft:stone",
                             amount: 1
                         }
@@ -2852,22 +2890,23 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/clock_item.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 5,
+            slot: 141,
             isHidden: false,
             collections: [
                 {
                     id: "ttq1_1",
                     tier: 1,
                     slot: 40,
-                    displayName: "Test One!",
-                    description: "Description One",
-                    icon: "textures/ui/QuestIcons/oak_log.png",                
+                    displayName: "Two Minutes",
+                    description: "Minute two",
+                    icon: "textures/ui/QuestIcons/clock_item.png",                
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
-                            category: "minecraft:stone",
-                            amount: 1
+                            type: "timePassedSince",  
+                            event: "milestone_activated",
+                            milestoneId: "ttq1",
+                            amount: 2
                         }
                     ],
                     rewards: [
@@ -2878,14 +2917,44 @@ export const MILESTONES = {
                         {
                             type: 'message',
                             stage: 'complete',
-                            content: 'Well done \nHere have §g10 points§r',
+                            content: 'Thats two minutes \nHere have §g10 points§r',
                             messageType: 'toast'
                         },
                     ]
                 },
+                {
+                    id: "ttq1_2",
+                    tier: 2,
+                    slot: 41,
+                    displayName: "Three Minutes",
+                    description: "Minute Three",
+                    icon: "textures/ui/QuestIcons/clock_item.png",                
+                    unlockedBy: 1,
+                    commands: [{}],  // commands to run
+                    requirements: [
+                        {
+                            type: "timePassedSince",  
+                            event: "milestone_activated",
+                            milestoneid: "ttq1",
+                            amount: 2
+                        }
+                    ],
+                    rewards: [
+                        {
+                            type: "point",
+                            amount: 10
+                        },
+                        {
+                            type: 'message',
+                            stage: 'complete',
+                            content: 'Thats Three minutes \nHere have §g10 points§r',
+                            messageType: 'toast'
+                        },
+                    ]
+                }
             ],
             options: {
-                activatedBy: ["itb1_1"],
+                activatedBy: ["itb1_11"], // activated when the survive 1 min is activated
                 cancellable: false,
                 repeatable: {
                     enabled: false,
@@ -2908,7 +2977,7 @@ export const MILESTONES = {
             lore : "Lore Lore Lore",
             icon: "textures/ui/QuestIcons/stats_book.png",
             background: "textures/ui/QuestBackgrounds/chestUI_90", 
-            slot: 16,
+            slot: 209,
             isHidden: false,
             collections: [
                 {
@@ -2921,7 +2990,7 @@ export const MILESTONES = {
                     commands: [{}],  // commands to run
                     requirements: [
                         {
-                            type: "break",  
+                            type: "onBreak",  
                             category: "minecraft:stone",
                             amount: 1
                         }

@@ -8,7 +8,8 @@ export const DEFAULT_COLLECTIONS = {
             "description": "Your first stepping stone to success! Gather basic building materials.",
             "icon": "textures/ui/mining_icon.png",
             "requirements": [
-                { 
+                {
+                    "type": "collect", 
                     "itemId": "minecraft:cobblestone",
                     "amount": 64
                 }
@@ -37,6 +38,7 @@ export const DEFAULT_COLLECTIONS = {
             "icon": "textures/blocks/coal_ore.png",
             "requirements": [
                 {
+                    "type": "collect",
                     "itemId": "minecraft:coal",
                     "amount": 32
                 }
@@ -70,6 +72,7 @@ export const DEFAULT_COLLECTIONS = {
             "icon": "textures/items/wheat.png",
             "requirements": [
                 {
+                    "type": "collect",
                     "itemId": "minecraft:wheat",
                     "amount": 64
                 }
@@ -99,6 +102,7 @@ export const DEFAULT_COLLECTIONS = {
             "icon": "textures/items/carrot.png",
             "requirements": [
                 {
+                    "type": "collect",
                     "itemId": "minecraft:carrot",
                     "amount": 64
                 }
@@ -131,14 +135,17 @@ export const DEFAULT_COLLECTIONS = {
             "icon": "textures/items/wood_pickaxe.png",
             "requirements": [
                 {
+                    "type": "collect",
                     "itemId": "minecraft:wooden_pickaxe",
                     "amount": 1
                 },
                 {
+                    "type": "collect",
                     "itemId": "minecraft:wooden_axe",
                     "amount": 1
                 },
                 {
+                    "type": "collect",
                     "itemId": "minecraft:wooden_shovel",
                     "amount": 1
                 }
@@ -178,6 +185,7 @@ export const DEFAULT_COLLECTIONS = {
             "icon": "textures/items/rotten_flesh.png",
             "requirements": [
                 {
+                    "type": "collect",
                     "itemId": "minecraft:rotten_flesh",
                     "amount": 64
                 }
@@ -210,6 +218,7 @@ export const DEFAULT_COLLECTIONS = {
             "icon": "textures/items/redstone_dust.png",
             "requirements": [
                 {
+                    "type": "collect",
                     "itemId": "minecraft:redstone",
                     "amount": 32
                 }
@@ -243,6 +252,7 @@ export const DEFAULT_COLLECTIONS = {
             "icon": "textures/items/fish_raw.png",
             "requirements": [
                 {
+                    "type": "collect",
                     "itemId": "minecraft:cod",
                     "amount": 16
                 }
