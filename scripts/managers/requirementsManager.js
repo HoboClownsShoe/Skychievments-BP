@@ -117,8 +117,12 @@ export class RequirementChecker {
             'onEatAllInCategory': this.#onEatAllInCategory,
 
             // dimension checkers
-            'dimensionChange': this.#onDimensionChange
+            'dimensionChange': this.#onDimensionChange,
 
+            // Submit checkers
+            'submit': this.submit,
+            'submitAnyInCategory': this.submitAnyInCategory,
+            'submitAllInCategory': this.submitAllInCategory
             // Add new checkers here when expanding
         };
 
@@ -127,6 +131,174 @@ export class RequirementChecker {
 
     // CHECKER IMPLEMENTATIONS
     // Each checker returns the current value for the given requirement
+    
+    /**
+ * Handles submission of items for 'submit' requirements.
+ * Only counts items without removing them, as removal happens in MilestoneHandler.
+ * @param {object} player
+ * @param {object} requirement - { type: 'submit', itemId, amount }
+ * @returns {number} Number of items found for submission
+ */
+static submit(player, requirement) {
+    try {
+        const inv = player.getComponent('inventory').container;
+        let count = 0;
+        
+        // Count how many of the required item the player has
+        for (let i = 0; i < inv.size; i++) {
+            const item = inv.getItem(i);
+            if (item && item.typeId === requirement.itemId) {
+                count += item.amount;
+            }
+        }
+        
+        const amountToSubmit = Math.min(count, requirement.amount);
+        return amountToSubmit;
+    } catch (e) {
+        Logger.log(`Error in submit requirement: ${e}`, "ERROR", "REQUIREMENT_SUBMIT");
+        return 0;
+    }
+}
+
+/**
+ * Checks if the player has the required amount of ANY ONE item in the category.
+ * @param {object} player
+ * @param {object} requirement - { type: 'submitAnyInCategory', category, amount }
+ * @returns {number} Number of items found for submission
+ */
+static submitAnyInCategory(player, requirement) {
+    try {
+        const inv = player.getComponent('inventory').container;
+        const itemDb = itemDatabase.getInstance();
+        const items = itemDb.getBlocksByCategory(requirement.category);
+        const validItemIds = new Set(Object.keys(items));
+
+        // Track counts for each valid item type
+        let itemCounts = {};
+
+        for (let i = 0; i < inv.size; i++) {
+            const item = inv.getItem(i);
+            if (item && validItemIds.has(item.typeId)) {
+                if (!itemCounts[item.typeId]) {
+                    itemCounts[item.typeId] = 0;
+                }
+                itemCounts[item.typeId] += item.amount;
+            }
+        }
+
+        // Find the item with the highest count
+        let bestItemId = null;
+        let maxCount = 0;
+        for (const itemId of Object.keys(itemCounts)) {
+            if (itemCounts[itemId] > maxCount) {
+                maxCount = itemCounts[itemId];
+                bestItemId = itemId;
+            }
+        }
+
+        const amountToSubmit = Math.min(maxCount, requirement.amount);
+        
+        // Store which item was chosen for submission in the requirement object
+        // This will be used by MilestoneHandler.handleSubmitRequirement
+        requirement._submissionItem = bestItemId;
+        requirement._submissionAmount = amountToSubmit;
+        
+        return amountToSubmit;
+    } catch (e) {
+        Logger.log(`Error in submitAnyInCategory: ${e}`, "ERROR", "REQUIREMENT_SUBMIT");
+        return 0;
+    }
+}
+
+    /**
+     * Checks if the player has any items from the category that can be contributed toward
+     * the requirement. Allows partial submission of each item type, with progress tracked individually.
+     * @param {object} player
+     * @param {object} requirement - { type: 'submitAllInCategory', category, amount }
+     * @param {object} progress - Current progress data (optional, for checking existing submissions)
+     * @returns {object} Information about available items for submission
+     */
+    static submitAllInCategory(player, requirement, progress = null) {
+        try {
+            const inv = player.getComponent('inventory').container;
+            const itemDb = itemDatabase.getInstance();
+            const items = itemDb.getBlocksByCategory(requirement.category);
+            const validItemIds = new Set(Object.keys(items));
+
+            // Track how much of each category item is found
+            let itemCounts = {};
+            let submissionItems = [];
+            let totalToSubmit = 0;
+            
+            // Count all valid items in inventory
+            for (let i = 0; i < inv.size; i++) {
+                const item = inv.getItem(i);
+                if (item && validItemIds.has(item.typeId)) {
+                    if (!itemCounts[item.typeId]) {
+                        itemCounts[item.typeId] = 0;
+                    }
+                    itemCounts[item.typeId] += item.amount;
+                }
+            }
+
+            // For each item in the category, determine how much can be submitted
+            for (const itemId of validItemIds) {
+                const count = itemCounts[itemId] || 0;
+                
+                // If we have progress data, check how much more is needed for this item
+                let neededAmount = requirement.amount;
+                if (progress && progress[itemId]) {
+                    neededAmount = Math.max(0, requirement.amount - progress[itemId]);
+                }
+                
+                const amountToSubmit = Math.min(count, neededAmount);
+                
+                if (amountToSubmit > 0) {
+                    submissionItems.push({
+                        itemId: itemId,
+                        amount: amountToSubmit,
+                        neededAmount: neededAmount
+                    });
+                    
+                    totalToSubmit += amountToSubmit;
+                }
+            }
+            
+            // Calculate if all items have met the requirement (including previous progress)
+            let allCompleted = true;
+            for (const itemId of validItemIds) {
+                // Get current progress for this item
+                let currentProgress = (progress && progress[itemId]) || 0;
+                
+                // Add new submission for this item (if any)
+                const submissionItem = submissionItems.find(item => item.itemId === itemId);
+                const newAmount = submissionItem ? submissionItem.amount : 0;
+                
+                // Check if this item meets the requirement
+                if (currentProgress + newAmount < requirement.amount) {
+                    allCompleted = false;
+                    break;
+                }
+            }
+            
+            // Store submission details for MilestoneHandler
+            requirement._submissionItems = submissionItems;
+            requirement._allCompleted = allCompleted;
+            
+            return {
+                amount: totalToSubmit,
+                submissionItems: submissionItems,
+                allCompleted: allCompleted
+            };
+        } catch (e) {
+            Logger.log(`Error in submitAllInCategory: ${e}`, "ERROR", "REQUIREMENT_SUBMIT");
+            return {
+                amount: 0,
+                submissionItems: [],
+                allCompleted: false
+            };
+        }
+    }
 
     // --- Block Interaction Checkers ---
 

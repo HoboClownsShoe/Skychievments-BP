@@ -2,9 +2,10 @@
 import { QuestPointsManager } from './questPointManager.js';
 import { Logger } from '../utils/logger.js';
 import { sendNotification, showTipToast } from '../utils/toast.js';
+import { GuildManager } from './guildManager.js';
 
 export class RewardManager {
-    static async processRewards(player, rewards, stage ) {
+    static async processRewards(player, rewards, stage = null, context = {}) {
         try {
             Logger.log(`Processing rewards for ${player.name}`, "DEBUG", "REWARD_MANAGERR");
             for (const reward of rewards) {
@@ -32,6 +33,13 @@ export class RewardManager {
                             await player.runCommandAsync(`give @p ${reward.itemId} ${reward.amount}`);
                         } catch (error) {
                             Logger.log(`Failed to give item reward: ${error}`, "ERROR", "REWARD_MANAGER");
+                        }
+                        break;
+                    case 'guild_points':
+                        if (context.guildId) {
+                            GuildManager.addGuildPoints(player, context.guildId, reward.amount);
+                        } else {
+                            Logger.log(`guild_points reward missing context.guildId`, "ERROR", "REWARD_MANAGER");
                         }
                         break;
                 }

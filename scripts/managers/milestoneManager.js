@@ -70,7 +70,7 @@ export class MilestoneManager {
                             }
 
                             //console.log(`Milestone checking for player : ${player.id}`);
-                            MilestoneHandler.checkAllActiveMilestones(player);
+                            MilestoneHandler.checkAllActiveMilestones(player); // Periodic check, do not include submit requirements
                         }, 300);
                     }, index * staggerTicks);
                 });
@@ -303,11 +303,11 @@ export class MilestoneHandler {
                     if (!playerProgress[milestone.id]) {
                         const firstTier = milestone.collections.find(c => c.tier === 1);
                         playerProgress[milestone.id] = {
-                            currentTiers: [1],
-                            requirements: firstTier.requirements.map(req => ({
+                            currentTiers: [firstTier.id],
+                            requirements: firstTier.requirements ? { [firstTier.id]: firstTier.requirements.map(req => ({
                                 currentCount: 0,
                                 completed: false
-                            })),
+                            })) } : {},
                             completed: false,
                             lastCompleted: 0
                         };
@@ -345,11 +345,13 @@ export class MilestoneHandler {
             const firstTier = milestone.collections.find(c => c.tier === startTier);
             
             playerProgress[milestone.id] = {
-                currentTiers: [startTier],
-                requirements: firstTier.requirements ? firstTier.requirements.map(req => ({
-                    currentCount: 0,
-                    completed: false
-                })) : [],
+                currentTiers: [firstTier.id],
+                requirements: firstTier.requirements ? {
+                    [firstTier.id]: firstTier.requirements.map(req => ({
+                        currentCount: 0,
+                        completed: false
+                    }))
+                } : {},
                 completed: false,
                 lastCompleted: 0,
                 completedTiers: {}
@@ -562,8 +564,8 @@ export class MilestoneHandler {
 
             const currentTiers = [...progress.currentTiers];
         
-        for (const tierNumber of currentTiers) {
-            const currentTier = milestone.collections.find(c => c.tier === tierNumber);
+        for (const tierId of currentTiers) {
+            const currentTier = milestone.collections.find(c => c.id === tierId);
             if (!currentTier) continue;
             
             if (currentTier.type === 'milestone_reference') {
@@ -575,7 +577,7 @@ export class MilestoneHandler {
                         completedAt: Date.now()
                     };
                     
-                    progress.currentTiers = progress.currentTiers.filter(t => t !== tierNumber);
+                    progress.currentTiers = progress.currentTiers.filter(t => t !== tierId);
                     
                     const referencedMilestone = MilestoneStorage.getMilestone(currentTier.reference.milestoneId);
                     if (referencedMilestone) {
@@ -586,7 +588,7 @@ export class MilestoneHandler {
                         rewardsToProcess.push(currentTier.rewards);
                     }
                     
-                    completedTiersThisUpdate.push(tierNumber);
+                    completedTiersThisUpdate.push(tierId);
                     
                     progressUpdated = true;
                 }
@@ -597,7 +599,8 @@ export class MilestoneHandler {
             const { allRequirementsMet, requirementsUpdated } = await this.checkTierRequirementsNew(
                 player,
                 currentTier,
-                progress
+                progress,
+                false // Periodic check, do not include submit requirements
             );
             
             if (requirementsUpdated) {
@@ -610,16 +613,16 @@ export class MilestoneHandler {
                 }
                 
                 progress.completedTiers = progress.completedTiers || {};
-                const completedTierNumber = currentTier.tier;
-                progress.completedTiers[completedTierNumber] = {
+                const completedTierId = currentTier.tier;
+                progress.completedTiers[completedTierId] = {
                     completedAt: Date.now()
                 };
                 
-                progress.currentTiers = progress.currentTiers.filter(t => t !== completedTierNumber);
+                progress.currentTiers = progress.currentTiers.filter(t => t !== completedTierId);
                 
-                completedTiersThisUpdate.push(completedTierNumber);
+                completedTiersThisUpdate.push(completedTierId);
 
-                Logger.log(`Completed tier ${completedTierNumber} in milestone ${milestone.id}`, "DEBUG", "MILESTONE");
+                Logger.log(`Completed tier ${completedTierId} in milestone ${milestone.id}`, "DEBUG", "MILESTONE");
                 Logger.log(`Updated completedTiers: ${JSON.stringify(progress.completedTiers)}`, "DEBUG", "MILESTONE");
 
                 await this.checkAndActivateDependentMilestones(player, milestone.id, currentTier.id);
@@ -638,22 +641,20 @@ export class MilestoneHandler {
         const allUnlockedTiers = this.getNextUnlockedTier(milestone, progress);
         
         for (const tier of allUnlockedTiers) {
-            if (!progress.currentTiers.includes(tier)) {
-                progress.currentTiers.push(tier);
-                
-                const tierData = milestone.collections.find(c => c.tier === tier);
-                if (tierData && tierData.requirements) {
-                    if (!progress.requirements || progress.requirements.length === 0) {
-                        progress.requirements = tierData.requirements.map(req => ({
+            const tierData = milestone.collections.find(c => c.tier === tier);
+            if (!tierData) continue;
+            if (!progress.currentTiers.includes(tierData.id)) {
+                progress.currentTiers.push(tierData.id);
+                if (tierData.requirements) {
+                    if (!progress.requirements[tierData.id]) {
+                        progress.requirements[tierData.id] = tierData.requirements.map(req => ({
                             currentCount: 0,
                             completed: false
                         }));
                     }
                 }
-
                 // Start timers for any timePassedSince requirements in this tier
                 this.#startTierTimers(player, milestone.id, tierData);
-                
                 progressUpdated = true;
             }
         }
@@ -773,46 +774,340 @@ export class MilestoneHandler {
         
     }
 
-    static async checkTierRequirementsNew(player, tierData, progress) {
+    static async handleSubmitRequirement(player, milestone, tierId, requirementIndex, submissionResult) {
+        try {
+            const allProgress = this.#milestoneProgressDB.get(player.id) || {};
+            let progress = allProgress[milestone.id];
+            
+            // Check if progress data exists
+            if (!progress || !progress.requirements || !progress.requirements[tierId]) {
+                Logger.log(`No progress data found for milestone ${milestone.id}, tier ${tierId}`, "ERROR", "MILESTONE");
+                return false;
+            }
+            
+            // Check if requirement index is valid
+            if (requirementIndex >= progress.requirements[tierId].length) {
+                Logger.log(`Invalid requirement index ${requirementIndex} for tier ${tierId}`, "ERROR", "MILESTONE");
+                return false;
+            }
+            
+            // Get the tier and requirement definitions
+            const tier = milestone.collections.find(c => c.id === tierId);
+            if (!tier || !tier.requirements || !tier.requirements[requirementIndex]) {
+                Logger.log(`Invalid tier or requirement data for ${tierId}, index ${requirementIndex}`, "ERROR", "MILESTONE");
+                return false;
+            }
+            
+            const requirement = tier.requirements[requirementIndex];
+            const reqProgress = progress.requirements[tierId][requirementIndex];
+            
+            // Handle different requirement types
+            if (requirement.type === 'submit') {
+                await this.#handleSimpleSubmit(player, milestone, tier, tierId, requirement, requirementIndex, reqProgress, submissionResult);
+            }
+            else if (requirement.type === 'submitAnyInCategory') {
+                await this.#handleAnyInCategorySubmit(player, milestone, tier, tierId, requirement, requirementIndex, reqProgress, submissionResult);
+            }
+            else if (requirement.type === 'submitAllInCategory') {
+                await this.#handleAllInCategorySubmit(player, milestone, tier, tierId, requirement, requirementIndex, reqProgress, submissionResult);
+            }
+            else {
+                Logger.log(`Unsupported requirement type: ${requirement.type}`, "ERROR", "MILESTONE");
+                return false;
+            }
+            
+            // Save progress and run the milestone update process
+            allProgress[milestone.id] = progress;
+            this.#milestoneProgressDB.set(player.id, allProgress);
+            await this.updateMilestoneProgress(player, milestone);
+            
+            return true;
+        } catch (error) {
+            Logger.log(`Error in handleSubmitRequirement: ${error}`, "ERROR", "MILESTONE");
+            return false;
+        }
+    }
+    
+    // Helper method for simple submit requirements
+    static async #handleSimpleSubmit(player, milestone, tier, tierId, requirement, requirementIndex, reqProgress, submissionResult) {
+        // Get current progress and calculate what's needed
+        const currentCount = reqProgress.currentCount || 0;
+        const neededAmount = Math.max(0, requirement.amount - currentCount);
+        
+        // If already completed, no need to process
+        if (neededAmount <= 0) return true;
+        
+        // Get amount to submit
+        const amountToSubmit = Math.min(submissionResult, neededAmount);
+        if (amountToSubmit <= 0) return false;
+        
+        // Remove items if needed
+        if (tier.keepSubmitted) {
+            const container = player.getComponent('inventory').container;
+            const removedAmount = this.removeItems(container, requirement.itemId, amountToSubmit);
+            
+            if (removedAmount < amountToSubmit) {
+                Logger.log(`Couldn't remove all items (${removedAmount}/${amountToSubmit})`, "WARN", "MILESTONE");
+                
+                // If no items were removed, submission fails
+                if (removedAmount <= 0) return false;
+                
+                // Update the amount to what was actually removed
+                amountToSubmit = removedAmount;
+            }
+        }
+        
+        // Update progress
+        reqProgress.currentCount = currentCount + amountToSubmit;
+        reqProgress.completed = reqProgress.currentCount >= requirement.amount;
+        
+        return true;
+    }
+    
+    // Helper method for submitAnyInCategory requirements
+    static async #handleAnyInCategorySubmit(player, milestone, tier, tierId, requirement, requirementIndex, reqProgress, submissionResult) {
+        // Get current progress and calculate what's needed
+        const currentCount = reqProgress.currentCount || 0;
+        const neededAmount = Math.max(0, requirement.amount - currentCount);
+        
+        // If already completed, no need to process
+        if (neededAmount <= 0) return true;
+        
+        // Calculate how much to submit
+        const amountToSubmit = Math.min(submissionResult, neededAmount);
+        if (amountToSubmit <= 0) return false;
+        
+        // Remove items if needed
+        let actualSubmitAmount = amountToSubmit;
+        
+        if (tier.keepSubmitted && requirement._submissionItems) {
+            const container = player.getComponent('inventory').container;
+            let totalRemoved = 0;
+            
+            // For submitAnyInCategory, we take items proportionally to what was found
+            for (const itemData of requirement._submissionItems) {
+                // Calculate proportional amount to remove
+                const itemProportion = itemData.amount / submissionResult;
+                let amountToRemove = Math.floor(amountToSubmit * itemProportion);
+                
+                // Ensure we don't remove more than needed due to rounding
+                if (totalRemoved + amountToRemove > amountToSubmit) {
+                    amountToRemove = amountToSubmit - totalRemoved;
+                }
+                
+                if (amountToRemove <= 0) continue;
+                
+                // Remove the items
+                const removedAmount = this.removeItems(container, itemData.itemId, amountToRemove);
+                totalRemoved += removedAmount;
+                
+                // If we've removed enough, stop
+                if (totalRemoved >= amountToSubmit) break;
+            }
+            
+            // If we couldn't remove everything, adjust the amount submitted
+            if (totalRemoved < amountToSubmit) {
+                Logger.log(`Only removed ${totalRemoved}/${amountToSubmit} items`, "WARN", "MILESTONE");
+                actualSubmitAmount = totalRemoved;
+                
+                if (actualSubmitAmount <= 0) return false;
+            }
+        }
+        
+        // Update progress
+        reqProgress.currentCount = currentCount + actualSubmitAmount;
+        reqProgress.completed = reqProgress.currentCount >= requirement.amount;
+        
+        return true;
+    }
+    
+    // Helper method for submitAllInCategory requirements
+    static async #handleAllInCategorySubmit(player, milestone, tier, tierId, requirement, requirementIndex, reqProgress, submissionResult) {
+        // Get or initialize per-item progress tracking
+        if (!reqProgress.itemProgress) {
+            reqProgress.itemProgress = {};
+        }
+        
+        // If no items to submit, return early
+        if (!requirement._submissionItems || requirement._submissionItems.length === 0) {
+            return false;
+        }
+        
+        // Track if any progress was made
+        let progressMade = false;
+        let allRequirementsMet = true;
+        
+        // Process each item submission
+        if (tier.keepSubmitted) {
+            const container = player.getComponent('inventory').container;
+            
+            for (const itemData of requirement._submissionItems) {
+                // Skip items with no amount to submit
+                if (itemData.amount <= 0) continue;
+                
+                // Get current progress for this item
+                const currentItemProgress = reqProgress.itemProgress[itemData.itemId] || 0;
+                
+                // Calculate needed amount
+                const neededAmount = Math.max(0, requirement.amount - currentItemProgress);
+                
+                // Skip if already completed for this item
+                if (neededAmount <= 0) continue;
+                
+                // Calculate how much to submit
+                const itemAmountToSubmit = Math.min(itemData.amount, neededAmount);
+                
+                // Remove items
+                const removedAmount = this.removeItems(container, itemData.itemId, itemAmountToSubmit);
+                
+                if (removedAmount > 0) {
+                    // Update progress for this item
+                    reqProgress.itemProgress[itemData.itemId] = currentItemProgress + removedAmount;
+                    progressMade = true;
+                    
+                    Logger.log(`Submitted ${removedAmount} of ${itemData.itemId}`, "DEBUG", "MILESTONE");
+                }
+                
+                // Check if all requirements are met
+                if (reqProgress.itemProgress[itemData.itemId] < requirement.amount) {
+                    allRequirementsMet = false;
+                }
+            }
+        }
+        else {
+            // No items removed, just update progress tracking
+            for (const itemData of requirement._submissionItems) {
+                // Get current progress for this item
+                const currentItemProgress = reqProgress.itemProgress[itemData.itemId] || 0;
+                
+                // Calculate needed amount
+                const neededAmount = Math.max(0, requirement.amount - currentItemProgress);
+                
+                // Skip if already completed for this item
+                if (neededAmount <= 0) continue;
+                
+                // Calculate how much to submit
+                const itemAmountToSubmit = Math.min(itemData.amount, neededAmount);
+                
+                if (itemAmountToSubmit > 0) {
+                    // Update progress for this item
+                    reqProgress.itemProgress[itemData.itemId] = currentItemProgress + itemAmountToSubmit;
+                    progressMade = true;
+                    
+                    Logger.log(`Submitted ${itemAmountToSubmit} of ${itemData.itemId}`, "DEBUG", "MILESTONE");
+                }
+                
+                // Check if all requirements are met
+                if (reqProgress.itemProgress[itemData.itemId] < requirement.amount) {
+                    allRequirementsMet = false;
+                }
+            }
+        }
+        
+        // Update overall requirement completion status
+        reqProgress.completed = allRequirementsMet;
+        
+        // Calculate total progress for display purposes
+        // This helps show an overall percentage in the UI
+        const itemDb = itemDatabase.getInstance();
+        const items = itemDb.getBlocksByCategory(requirement.category);
+        const totalItemsInCategory = Object.keys(items).length;
+        
+        // Sum up progress across all items and calculate a percentage
+        let totalProgress = 0;
+        for (const itemId in reqProgress.itemProgress) {
+            totalProgress += Math.min(reqProgress.itemProgress[itemId], requirement.amount);
+        }
+        
+        // Set currentCount as the average progress per item (out of requirement.amount)
+        reqProgress.currentCount = totalProgress / totalItemsInCategory;
+        
+        return progressMade;
+    }
+
+/**
+ * Removes a specific amount of items from a container.
+ * @param {Container} container - The inventory container
+ * @param {string} itemId - The item type ID to remove
+ * @param {number} maxAmount - Maximum amount to remove (optional)
+ * @returns {number} The amount that was actually removed
+ */
+static removeItems(container, itemId, maxAmount) {
+    let removedAmount = 0;
+    
+    for(let i = 0; i < container.size; i++) {
+        if (maxAmount && removedAmount >= maxAmount) return removedAmount;
+        
+        const item = container.getItem(i);
+        if (!item) continue;
+        if (item.typeId != itemId) continue;
+        
+        if (maxAmount) {
+            if (maxAmount - removedAmount >= item.amount) {
+                removedAmount = removedAmount + item.amount;
+                container.setItem(i, undefined);
+            } else {
+                item.amount = item.amount - (maxAmount - removedAmount);
+                container.setItem(i, item);
+                removedAmount = maxAmount;
+            }
+        } else {
+            removedAmount = removedAmount + item.amount;
+            container.setItem(i, undefined);
+        }
+    }
+    
+    return removedAmount;
+}
+
+
+    /**
+     * Checks tier requirements, optionally skipping 'submit' type requirements.
+     * @param {object} player
+     * @param {object} tierData
+     * @param {object} progress
+     * @param {boolean} [includeSubmit=false] - If true, includes 'submit' type requirements. Default: false (periodic check skips 'submit').
+     */
+    static async checkTierRequirementsNew(player, tierData, progress, includeSubmit = false, tierId = null) {
         try {
             Logger.log(`Checking Tier Requirements for ${tierData.displayName}`, "DEBUG", "TIER_CHECKING");
-
-            const { requirements } = await RequirementChecker.checkRequirements(player, tierData.requirements || []);
+    
+            let requirementsToCheck = tierData.requirements || [];
+            if (!includeSubmit) {
+                requirementsToCheck = requirementsToCheck.filter(r => r.type !== 'submit');
+            }
+            const { requirements } = await RequirementChecker.checkRequirements(player, requirementsToCheck);
             let requirementsUpdated = false;
-            
-            if (!progress.requirements || progress.requirements.length === 0) {
-                progress.requirements = requirements.map(r => ({
+            tierId = tierId || tierData.id;
+            if (!progress.requirements[tierId] || progress.requirements[tierId].length === 0) {
+                progress.requirements[tierId] = requirements.map(r => ({
                     currentCount: r.currentValue,
                     completed: r.isCompleted
                 }));
                 requirementsUpdated = true;
             } else {
                 for (let i = 0; i < requirements.length; i++) {
-                    if (i >= progress.requirements.length) {
-                        progress.requirements.push({
+                    if (i >= progress.requirements[tierId].length) {
+                        progress.requirements[tierId].push({
                             currentCount: requirements[i].currentValue,
                             completed: requirements[i].isCompleted
                         });
                         requirementsUpdated = true;
-                    } else if (requirements[i].currentValue > progress.requirements[i].currentCount) {
-                        progress.requirements[i].currentCount = requirements[i].currentValue;
-                        progress.requirements[i].completed = requirements[i].isCompleted;
+                    } else if (requirements[i].currentValue > progress.requirements[tierId][i].currentCount) {
+                        progress.requirements[tierId][i].currentCount = requirements[i].currentValue;
+                        progress.requirements[tierId][i].completed = requirements[i].isCompleted;
                         requirementsUpdated = true;
                     }
                 }
             }
-            
             const allRequirementsMet = requirements.every(r => r.isCompleted);
             
-            return { allRequirementsMet, requirementsUpdated };    
-               
+            return { allRequirementsMet, requirementsUpdated };
         } catch (error) {
-            Logger.log(`Error checking the New Tier Requirements: ${error}`, "ERROR", "MILESTONE");
-            return false;
+            Logger.log(`Error checking tier requirements: ${error}`, "ERROR", "TIER_CHECKING");
+            return { allRequirementsMet: false, requirementsUpdated: false };
         }
-
-        
-    }   
+    }  
 
     static async checkPrerequisitesEfficient(player, milestone, existingProgress) {
         try {

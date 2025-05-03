@@ -1,22 +1,22 @@
 {
     "format_version": 2,
     "header": {
-      "name": "Skychievements BP 0.3.0",
+      "name": "QuestinAintEasy BP 0.1.0",
       "description": "Skychievments Behaviour Pack",
-      "uuid": "19733f45-2226-4a0b-ba1b-776ee53c5cfd",
-      "version": [0, 3, 0],
+      "uuid": "03b86a21-bc65-4be7-9fd0-e1e3338ae41e",
+      "version": [0, 1, 0],
       "min_engine_version": [1, 20, 0]
     },
     "modules": [
       {
         "type": "data",
-        "uuid": "b95f0e7a-dcf2-40c2-aab6-c5c5e1e37e74",
+        "uuid": "78f1966a-8d9e-4548-bf06-501b06da9e94",
         "version": [1, 0, 0]
       },
       {
         "type": "script",
         "language": "javascript",
-        "uuid": "a71f1e7b-def2-40c2-aab6-c5c5e1e37e74",
+        "uuid": "bc5d1f51-8f61-4306-baa4-c74e8a634011",
         "entry": "scripts/index.js",
         "version": [1, 0, 0]
       }

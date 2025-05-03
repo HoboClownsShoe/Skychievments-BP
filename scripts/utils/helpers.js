@@ -236,6 +236,10 @@ export class StatValueFormatter {
                 return `${minutes}m ${seconds % 60}s`;
             case 'event':
                 return value;
+            case 'submit':
+            case 'submitAnyInCategory':
+            case 'submitAllInCategory':
+                return value.amountSubmitted || value;
 
             default:
                 return value.toString();
